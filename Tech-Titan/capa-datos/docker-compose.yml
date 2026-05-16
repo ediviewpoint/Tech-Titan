@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: tech-titan-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password123
+      POSTGRES_DB: techtitan_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - techtitan-network
+    restart: unless-stopped
+    # Nota de Arquitectura: Elegimos PostgreSQL como base de datos principal 
+    # por su robustez, soporte JSONB nativo (útil para atributos dinámicos de hardware)
+    # y perfecta integración con MedusaJS.
+
+  redis:
+    image: redis:7-alpine
+    container_name: tech-titan-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    networks:
+      - techtitan-network
+    restart: unless-stopped
+    # Nota de Arquitectura: Redis se utilizará como capa de caché para aligerar 
+    # la carga de la base de datos durante búsquedas intensivas de productos, 
+    # así como para el manejo eficiente de sesiones de carritos de compra.
+
+volumes:
+  pgdata:
+    driver: local
+  redisdata:
+    driver: local
+
+networks:
+  techtitan-network:
+    driver: bridge

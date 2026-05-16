@@ -1,0 +1,32 @@
+{
+  "name": "tech-titan",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Tech-Titan PC Builder — Monorepo (capa-datos / capa-negocio / capa-presentacion)",
+  "scripts": {
+    "dev": "concurrently --kill-others-on-fail -n \"  DB ,  API, APP \" -c \"bgCyan.black,bgGreen.black,bgMagenta.white\" \"npm run dev:db\" \"npm run dev:api\" \"npm run dev:app\"",
+
+    "dev:db":  "docker compose -f capa-datos/docker-compose.yml --project-name tech-titan up -d && wait-on tcp:localhost:5433 tcp:localhost:6379 --timeout 30000 --interval 1000 && echo [DB] PostgreSQL y Redis listos",
+    "dev:api": "wait-on tcp:localhost:5433 tcp:localhost:6379 --timeout 60000 --interval 1000 && npm --prefix capa-negocio run develop",
+    "dev:app": "wait-on http-get://localhost:9000/health --timeout 120000 --interval 2000 --window 1000 && npm --prefix capa-presentacion run dev",
+
+    "stop":          "docker compose -f capa-datos/docker-compose.yml --project-name tech-titan stop && echo [DB] Contenedores detenidos",
+    "stop:hard":     "docker compose -f capa-datos/docker-compose.yml --project-name tech-titan down",
+
+    "seed":          "npm --prefix capa-negocio run seed",
+    "create:admin":  "npm --prefix capa-negocio run create:admin-user",
+    "migrate":       "npm --prefix capa-negocio run migrations:run",
+
+    "build:frontend": "npm --prefix capa-presentacion run build",
+    "build:backend":  "npm --prefix capa-negocio run build",
+    "build":          "npm run build:backend && npm run build:frontend",
+
+    "install:all": "npm --prefix capa-negocio install && npm --prefix capa-presentacion install",
+
+    "status": "node scripts/check-system.js"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "wait-on": "^8.0.3"
+  }
+}
