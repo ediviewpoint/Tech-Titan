@@ -19,10 +19,48 @@ const DB_URL =
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface HardwareComponent {
-  name:      string;
-  category:  ComponentCategory;
-  price_usd: number;
-  metadata:  HardwareMetadata;
+  name:        string;
+  category:    ComponentCategory;
+  price_usd:   number;
+  metadata:    HardwareMetadata;
+  svg_key?:    string;
+  stock?:      number;
+  description?: string;
+}
+
+// ─── Inferencia automática de svg_key y stock ─────────────────────────────────
+
+function inferSvgKey(name: string, category: ComponentCategory): string {
+  switch (category) {
+    case ComponentCategory.CPU:
+      return (name.includes("AMD") || name.includes("Ryzen")) ? "cpu-amd" : "cpu-intel";
+    case ComponentCategory.GPU:
+      return (name.includes("Radeon") || name.includes(" RX ")) ? "gpu-amd" : "gpu-nvidia";
+    case ComponentCategory.RAM:
+      if (name.includes("Corsair")) return "ram-corsair";
+      if (name.includes("G.Skill")) return "ram-gskill";
+      return "ram";
+    case ComponentCategory.MOTHERBOARD: return "motherboard";
+    case ComponentCategory.PSU:
+      return name.includes("Corsair") ? "psu-corsair" : "psu";
+    case ComponentCategory.STORAGE:
+      if (name.includes("HDD") || name.includes("Barracuda")) return "storage-hdd";
+      if (name.includes("SATA")) return "storage-sata";
+      return "storage-nvme";
+    case ComponentCategory.CASE: return "case";
+    case ComponentCategory.COOLER:
+      return (name.includes("AIO") || name.includes("mm AIO")) ? "cooler-aio" : "cooler-air";
+    default: return "";
+  }
+}
+
+function inferStock(price: number): number {
+  if (price === 0)      return 20;
+  if (price < 100)      return 25;
+  if (price < 300)      return 15;
+  if (price < 600)      return 10;
+  if (price < 1000)     return 6;
+  return 3;
 }
 
 interface ExchangeRateSeed {
@@ -314,11 +352,11 @@ async function ensureSchema(client: Client): Promise<void> {
     )
   `);
 
-  // Migración: agregar price_usd si no existe (para bases de datos antiguas)
-  await client.query(`
-    ALTER TABLE hardware_components
-    ADD COLUMN IF NOT EXISTS price_usd DECIMAL(10,2) NOT NULL DEFAULT 0
-  `);
+  // Columnas opcionales — se agregan si no existen (idempotente)
+  await client.query(`ALTER TABLE hardware_components ADD COLUMN IF NOT EXISTS price_usd   DECIMAL(10,2) NOT NULL DEFAULT 0`);
+  await client.query(`ALTER TABLE hardware_components ADD COLUMN IF NOT EXISTS svg_key     VARCHAR(100)`);
+  await client.query(`ALTER TABLE hardware_components ADD COLUMN IF NOT EXISTS stock       INTEGER NOT NULL DEFAULT 0`);
+  await client.query(`ALTER TABLE hardware_components ADD COLUMN IF NOT EXISTS description TEXT`);
 
   await client.query(`
     CREATE TABLE IF NOT EXISTS exchange_rates (
@@ -355,20 +393,26 @@ async function ensureSchema(client: Client): Promise<void> {
 }
 
 async function upsertComponent(client: Client, c: HardwareComponent): Promise<void> {
+  const svgKey = c.svg_key ?? inferSvgKey(c.name, c.category);
+  const stock  = c.stock  ?? inferStock(c.price_usd);
+
   const result = await client.query<{ id: string; action: string }>(
-    `INSERT INTO hardware_components (name, category, price_usd, metadata)
-     VALUES ($1, $2, $3, $4)
+    `INSERT INTO hardware_components (name, category, price_usd, metadata, svg_key, stock, description)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)
      ON CONFLICT (name) DO UPDATE
-       SET price_usd  = EXCLUDED.price_usd,
-           metadata   = EXCLUDED.metadata,
-           updated_at = NOW()
+       SET price_usd   = EXCLUDED.price_usd,
+           metadata    = EXCLUDED.metadata,
+           svg_key     = EXCLUDED.svg_key,
+           stock       = EXCLUDED.stock,
+           description = EXCLUDED.description,
+           updated_at  = NOW()
      RETURNING id,
        CASE WHEN xmax = 0 THEN 'INSERT' ELSE 'UPDATE' END AS action`,
-    [c.name, c.category, c.price_usd, JSON.stringify(c.metadata)]
+    [c.name, c.category, c.price_usd, JSON.stringify(c.metadata), svgKey || null, stock, c.description ?? null]
   );
   const { id, action } = result.rows[0]!;
   const icon = action === "INSERT" ? "[+]" : "[~]";
-  console.log(`  ${icon} ${c.category.padEnd(12)} $${String(c.price_usd).padStart(6)}  "${c.name}" → ${id}`);
+  console.log(`  ${icon} ${c.category.padEnd(12)} $${String(c.price_usd).padStart(6)}  ${svgKey.padEnd(16)} "${c.name}" → ${id}`);
 }
 
 async function upsertExchangeRate(client: Client, r: ExchangeRateSeed): Promise<void> {

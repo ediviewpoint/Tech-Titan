@@ -3,13 +3,16 @@
   "version": "2.0.0",
   "description": "Tech-Titan — API REST pura (Express + PostgreSQL)",
   "scripts": {
-    "dev":        "ts-node-dev --respawn --transpile-only --exit-child src/server.ts",
-    "build":      "tsc --project tsconfig.json",
-    "start":      "node dist/server.js",
-    "seed":       "ts-node src/scripts/seed-hardware.ts",
-    "test":       "jest --runInBand",
-    "test:watch": "jest --watch",
-    "typecheck":  "tsc --noEmit"
+    "dev":          "ts-node-dev --respawn --transpile-only --exit-child src/server.ts",
+    "build":        "tsc --project tsconfig.json",
+    "start":        "node dist/server.js",
+    "seed":         "ts-node src/scripts/seed-hardware.ts",
+    "migrate":      "ts-node src/scripts/migrate.ts up",
+    "migrate:down": "ts-node src/scripts/migrate.ts down",
+    "setup":        "npm run migrate && npm run seed",
+    "test":         "jest --runInBand",
+    "test:watch":   "jest --watch",
+    "typecheck":    "tsc --noEmit"
   },
   "dependencies": {
     "compression":          "^1.7.4",

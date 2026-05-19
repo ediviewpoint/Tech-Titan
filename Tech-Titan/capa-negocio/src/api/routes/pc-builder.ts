@@ -11,11 +11,14 @@ const router = Router();
 // ─── Shared types ─────────────────────────────────────────────────────────────
 
 interface HardwareComponentRow {
-  id:        string;
-  name:      string;
-  category:  string;
-  price_usd: string;
-  metadata:  HardwareMetadata;
+  id:          string;
+  name:        string;
+  category:    string;
+  price_usd:   string;
+  metadata:    HardwareMetadata;
+  svg_key:     string | null;
+  stock:       number;
+  description: string | null;
 }
 
 function isComponentCategory(value: string): value is ComponentCategory {
@@ -36,11 +39,14 @@ function mapRowToCartItem(row: HardwareComponentRow): CartItem {
 
 function mapRowToProduct(row: HardwareComponentRow) {
   return {
-    id:        row.id,
-    name:      row.name,
-    category:  row.category,
-    price_usd: parseFloat(row.price_usd),
-    metadata:  row.metadata,
+    id:          row.id,
+    name:        row.name,
+    category:    row.category,
+    price_usd:   parseFloat(row.price_usd),
+    metadata:    row.metadata,
+    svg_key:     row.svg_key ?? undefined,
+    stock:       row.stock ?? 0,
+    description: row.description ?? undefined,
   };
 }
 
@@ -53,11 +59,11 @@ router.get("/products", async (req: Request, res: Response): Promise<void> => {
   try {
     const result: QueryResult<HardwareComponentRow> = category
       ? await pool.query(
-          "SELECT id, name, category, price_usd, metadata FROM hardware_components WHERE category = $1 ORDER BY price_usd",
+          "SELECT id, name, category, price_usd, metadata, svg_key, stock, description FROM hardware_components WHERE category = $1 ORDER BY price_usd",
           [category]
         )
       : await pool.query(
-          "SELECT id, name, category, price_usd, metadata FROM hardware_components ORDER BY category, price_usd"
+          "SELECT id, name, category, price_usd, metadata, svg_key, stock, description FROM hardware_components ORDER BY category, price_usd"
         );
 
     logger.info(`GET /products → ${result.rowCount} (filtro: ${category ?? "todos"})`);
@@ -79,7 +85,7 @@ router.post(
 
     try {
       const result: QueryResult<HardwareComponentRow> = await pool.query(
-        "SELECT id, name, category, price_usd, metadata FROM hardware_components WHERE id = ANY($1::uuid[])",
+        "SELECT id, name, category, price_usd, metadata, svg_key, stock, description FROM hardware_components WHERE id = ANY($1::uuid[])",
         [product_ids]
       );
 
@@ -139,7 +145,7 @@ router.get("/build", async (req: Request, res: Response): Promise<void> => {
 
   try {
     const result: QueryResult<HardwareComponentRow> = await pool.query(
-      "SELECT id, name, category, price_usd, metadata FROM hardware_components WHERE id = ANY($1::uuid[]) ORDER BY category",
+      "SELECT id, name, category, price_usd, metadata, svg_key, stock, description FROM hardware_components WHERE id = ANY($1::uuid[]) ORDER BY category",
       [ids]
     );
 

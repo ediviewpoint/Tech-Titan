@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import type { HardwareProduct, ValidationResult } from "@/types/hardware";
 import { ComponentCategory } from "@/types/hardware";
 import type { BuildStep } from "./StepIndicator";
+import { useCurrencyStore, formatPrice } from "@/store/currency";
 
 const STEP_CATEGORIES: Record<number, ComponentCategory> = {
   0: ComponentCategory.CPU,
@@ -36,6 +37,7 @@ function SlotRow({
 }: {
   step: BuildStep; product: HardwareProduct | undefined; onRemove: () => void;
 }) {
+  const currencyStore = useCurrencyStore();
   return (
     <motion.div
       layout
@@ -77,7 +79,9 @@ function SlotRow({
       {product ? (
         <div className="flex items-center gap-1.5 flex-shrink-0">
           {product.price_usd !== undefined && (
-            <span className="text-[10px] font-mono text-cyan-500">${product.price_usd}</span>
+            <span className="text-[10px] font-mono text-cyan-500">
+              {formatPrice(currencyStore, product.price_usd)}
+            </span>
           )}
           <button onClick={onRemove} className="text-gray-600 hover:text-red-400 transition-colors p-0.5" title="Quitar">
             <X size={12} />
@@ -171,6 +175,7 @@ export function BuildManifest({
   steps, selected, totalPrice, totalTdp, onRemove,
   validation, isValidating, validationError,
 }: BuildManifestProps) {
+  const currencyStore  = useCurrencyStore();
   const completedCount = steps.filter((s) => selected[STEP_CATEGORIES[s.index]!] !== undefined).length;
   const progress       = (completedCount / steps.length) * 100;
 
@@ -222,7 +227,7 @@ export function BuildManifest({
                 <div className="flex items-center gap-1 text-[10px] font-mono text-gray-500 uppercase">
                   <DollarSign size={10} /> Precio parcial
                 </div>
-                <p className="text-sm font-bold gradient-text-accent">${totalPrice.toLocaleString()}</p>
+                <p className="text-sm font-bold gradient-text-accent">{formatPrice(currencyStore, totalPrice)}</p>
               </div>
             )}
 

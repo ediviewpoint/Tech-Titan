@@ -14,6 +14,7 @@ import { exportBuildToPDF } from "@/lib/pdf-export";
 import type { HardwareProduct, ValidationResult } from "@/types/hardware";
 import { ComponentCategory } from "@/types/hardware";
 import type { BuildStep } from "./StepIndicator";
+import { useCurrencyStore, formatPrice } from "@/store/currency";
 
 const STEP_CATEGORIES: Record<number, ComponentCategory> = {
   0: ComponentCategory.CPU,
@@ -116,6 +117,7 @@ function CompatibilityStatus({ validation, isValidating }: { validation: Validat
 // ─── Component row ────────────────────────────────────────────────────────────
 
 function ComponentRow({ product, index }: { product: HardwareProduct; index: number }) {
+  const currencyStore = useCurrencyStore();
   return (
     <motion.div
       initial={{ opacity: 0, x: -12 }}
@@ -132,7 +134,7 @@ function ComponentRow({ product, index }: { product: HardwareProduct; index: num
       </div>
       <div className="flex-shrink-0 text-right">
         {product.price_usd !== undefined ? (
-          <p className="text-sm font-bold text-cyan-400">${product.price_usd.toLocaleString()}</p>
+          <p className="text-sm font-bold text-cyan-400">{formatPrice(currencyStore, product.price_usd)}</p>
         ) : (
           <p className="text-xs text-gray-600 font-mono">—</p>
         )}
@@ -150,6 +152,7 @@ export function BudgetModal({
   isOpen, onClose, steps, selected, totalPrice, totalTdp, validation, isValidating,
 }: BudgetModalProps) {
   const router        = useRouter();
+  const currencyStore = useCurrencyStore();
   const [exporting, setExporting] = useState(false);
 
   const components = steps
@@ -268,15 +271,20 @@ export function BudgetModal({
                         <DollarSign size={10} /> Total
                       </div>
                       {totalPrice > 0 ? (
-                        <motion.p
+                        <motion.div
                           initial={{ opacity: 0, scale: 0.8 }}
                           animate={{ opacity: 1, scale: 1 }}
-                          transition={{ delay: 0.4, type: "spring" }}
-                          className="text-xl font-black gradient-text-accent"
+                          transition={{ delay: 0.4, type: "spring" as const }}
                         >
-                          ${totalPrice.toLocaleString()}
-                          <span className="text-xs font-mono text-gray-500 ml-1">USD</span>
-                        </motion.p>
+                          <p className="text-xl font-black gradient-text-accent">
+                            {formatPrice(currencyStore, totalPrice)}
+                          </p>
+                          {currencyStore.selectedCurrency !== "USD" && (
+                            <p className="text-[10px] font-mono text-gray-600">
+                              ${totalPrice.toLocaleString()} USD
+                            </p>
+                          )}
+                        </motion.div>
                       ) : (
                         <p className="text-sm text-gray-600 font-mono">Sin precios</p>
                       )}
