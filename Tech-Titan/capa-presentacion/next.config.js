@@ -1,13 +1,14 @@
 /** @type {import('next').NextConfig} */
 
-// Resolución de URL del backend:
-// NEXT_PUBLIC_MEDUSA_BACKEND_URL > NEXT_PUBLIC_API_URL > localhost:9000
+// Resolución de URL del backend Express:
+// NEXT_PUBLIC_API_URL > localhost:9000
 const resolveBackendUrl = () =>
-  process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL ??
-  process.env.NEXT_PUBLIC_API_URL            ??
-  "http://localhost:9000";
+  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:9000";
 
 const nextConfig = {
+  // standalone: genera server.js autocontenido para Docker / Railway
+  output: "standalone",
+
   // ── API proxy → backend (evita CORS en dev y producción) ─────────────────
   async rewrites() {
     const apiUrl = resolveBackendUrl();
@@ -30,7 +31,7 @@ const nextConfig = {
       // Cloudinary / S3 (si se añade almacenamiento de imágenes)
       { protocol: "https", hostname: "*.cloudinary.com" },
       { protocol: "https", hostname: "*.s3.amazonaws.com" },
-      // MedusaJS media (Railway / producción)
+      // Backend en Railway / producción
       { protocol: "https", hostname: "*.railway.app" },
     ],
   },

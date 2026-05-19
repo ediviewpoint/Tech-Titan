@@ -16,7 +16,7 @@ const OrderItemSchema = z.object({
   category:   z.string().min(1).max(100),
   price_usd:  z.number().nonnegative(),
   quantity:   z.number().int().positive().default(1),
-  svg_key:    z.string().max(100).optional(),
+  svg_key:    z.string().max(2048).optional(),
   metadata:   z.record(z.unknown()).optional().default({}),
 });
 

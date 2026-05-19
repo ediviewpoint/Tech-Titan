@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo, Suspense } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { CheckCircle2, ArrowLeft, Home, Package, Copy, Check } from "lucide-react";
+import { CheckCircle2, ArrowLeft, Home, Package, Copy, Check, MessageCircle } from "lucide-react";
 import { fetchOrder } from "@/lib/api";
 import type { Order } from "@/types/hardware";
 
@@ -134,8 +134,8 @@ function SuccessContent() {
 
         {/* Heading */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.85 }} className="space-y-2">
-          <h1 className="text-3xl font-black gradient-text-accent">¡Pedido Confirmado!</h1>
-          <p className="text-gray-400 text-sm">Tu build ha sido registrado correctamente.</p>
+          <h1 className="text-3xl font-black gradient-text-accent">¡Solicitud Enviada!</h1>
+          <p className="text-gray-400 text-sm">Tu build fue enviado por WhatsApp. Te contactaremos para confirmar disponibilidad y coordinar el pago.</p>
 
           <div className="inline-flex items-center gap-1 mt-2 text-xs font-mono text-gray-500 bg-gray-800/60 border border-gray-700/40 rounded-lg px-4 py-2">
             <Package size={11} className="text-cyan-500" />
@@ -146,8 +146,23 @@ function SuccessContent() {
 
         {orderId && <OrderDetail orderId={orderId} />}
 
+        {/* WhatsApp info banner */}
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 1.0 }}
+          className="flex items-start gap-3 rounded-xl p-3 text-left"
+          style={{ background: "rgba(37,211,102,0.07)", border: "1px solid rgba(37,211,102,0.2)" }}
+        >
+          <MessageCircle size={16} className="text-green-400 flex-shrink-0 mt-0.5" />
+          <div className="space-y-0.5">
+            <p className="text-xs font-semibold text-green-400">WhatsApp abierto</p>
+            <p className="text-[10px] text-gray-500">Si no se abrió automáticamente, volvé al builder y usá "Solicitar por WhatsApp" nuevamente.</p>
+          </div>
+        </motion.div>
+
         {/* Actions */}
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.2 }} className="flex gap-3">
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.3 }} className="flex gap-3">
           <Link href="/pc-builder" className="btn-ghost flex-1 justify-center text-sm">
             <ArrowLeft size={14} /> PC Builder
           </Link>
@@ -155,11 +170,6 @@ function SuccessContent() {
             <Home size={14} /> Inicio
           </Link>
         </motion.div>
-
-        <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.5 }}
-          className="text-[10px] text-gray-700 font-mono">
-          Simulación de pago · No se realizó ningún cargo real
-        </motion.p>
       </motion.div>
     </main>
   );

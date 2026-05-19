@@ -7,9 +7,11 @@ import { toast } from "sonner";
 import {
   Shield, Plus, Trash2, RefreshCw, Database, AlertTriangle,
   ChevronDown, ChevronUp, Pencil, Search, X, Package,
-  DollarSign, Layers, Image as ImageIcon,
+  DollarSign, Layers, Image as ImageIcon, MessageSquarePlus,
+  CheckCircle2, Clock, Circle,
 } from "lucide-react";
 import { HardwareIcon } from "@/components/HardwareIcon";
+import { resolveProductImage } from "@/lib/image";
 import { cn } from "@/lib/utils";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -45,6 +47,105 @@ interface ProductForm {
   interface_type:     string;
   cooler_type:        string;
   tdp_rating:         string;
+}
+
+// ─── Ticket types ─────────────────────────────────────────────────────────────
+
+interface Ticket {
+  id:          string;
+  name:        string;
+  email:       string | null;
+  type:        string;
+  description: string;
+  status:      "abierto" | "en_proceso" | "resuelto";
+  created_at:  string;
+}
+
+const TICKET_TYPE_LABELS: Record<string, string> = {
+  bug:       "🐛 Problema técnico",
+  pedido:    "📦 Pedido",
+  consulta:  "❓ Consulta",
+  sugerencia:"💡 Sugerencia",
+};
+
+const TICKET_STATUS: { value: Ticket["status"]; label: string; color: string }[] = [
+  { value: "abierto",    label: "Abierto",     color: "text-cyan-400 border-cyan-500/30 bg-cyan-500/10" },
+  { value: "en_proceso", label: "En proceso",  color: "text-amber-400 border-amber-500/30 bg-amber-500/10" },
+  { value: "resuelto",   label: "Resuelto",    color: "text-emerald-400 border-emerald-500/30 bg-emerald-500/10" },
+];
+
+async function fetchTickets(): Promise<Ticket[]> {
+  const res = await fetch(`${BACKEND}/store/admin/tickets`, { cache: "no-store" });
+  if (!res.ok) throw new Error("Error al cargar tickets");
+  const data = await res.json() as { tickets: Ticket[] };
+  return data.tickets;
+}
+
+async function updateTicketStatus(id: string, status: Ticket["status"]): Promise<void> {
+  const res = await fetch(`${BACKEND}/store/admin/tickets/${id}`, {
+    method: "PATCH", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status }),
+  });
+  if (!res.ok) throw new Error("Error al actualizar ticket");
+}
+
+// ─── Ticket card ──────────────────────────────────────────────────────────────
+
+function TicketCard({ ticket, onStatusChange }: { ticket: Ticket; onStatusChange: (id: string, s: Ticket["status"]) => void }) {
+  const statusCfg = TICKET_STATUS.find((s) => s.value === ticket.status) ?? TICKET_STATUS[0]!;
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="glass-card p-4 space-y-3"
+    >
+      {/* Cabecera */}
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[10px] font-mono text-gray-500">
+              #{ticket.id.slice(0, 8).toUpperCase()}
+            </span>
+            <span className={cn("text-[10px] px-2 py-0.5 rounded-full border font-mono", statusCfg.color)}>
+              {statusCfg.label}
+            </span>
+            <span className="text-[10px] text-gray-600 font-mono">
+              {TICKET_TYPE_LABELS[ticket.type] ?? ticket.type}
+            </span>
+          </div>
+          <p className="text-sm font-semibold text-white mt-1">{ticket.name}</p>
+          {ticket.email && (
+            <p className="text-[10px] text-gray-500 font-mono">{ticket.email}</p>
+          )}
+        </div>
+        <p className="text-[9px] text-gray-600 font-mono whitespace-nowrap flex-shrink-0">
+          {new Date(ticket.created_at).toLocaleDateString("es-ES", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+        </p>
+      </div>
+
+      {/* Descripción */}
+      <p className="text-xs text-gray-400 leading-relaxed">{ticket.description}</p>
+
+      {/* Cambiar estado */}
+      <div className="flex gap-1.5 flex-wrap">
+        {TICKET_STATUS.map((s) => (
+          <button
+            key={s.value}
+            onClick={() => onStatusChange(ticket.id, s.value)}
+            disabled={ticket.status === s.value}
+            className={cn(
+              "text-[10px] font-mono px-2.5 py-1 rounded-lg border transition-colors disabled:opacity-40 disabled:cursor-default",
+              ticket.status === s.value
+                ? s.color
+                : "border-gray-700/50 text-gray-600 hover:border-gray-600 hover:text-gray-400"
+            )}
+          >
+            {s.label}
+          </button>
+        ))}
+      </div>
+    </motion.div>
+  );
 }
 
 const EMPTY_FORM: ProductForm = {
@@ -147,10 +248,11 @@ function StockBadge({ stock }: { stock: number }) {
 // ─── Product image preview ────────────────────────────────────────────────────
 
 function SvgPreview({ svgKey, category }: { svgKey?: string; category: string }) {
-  if (!svgKey) return <HardwareIcon category={category} size={18} className="text-gray-600" />;
+  const src = resolveProductImage(svgKey);
+  if (!src) return <HardwareIcon category={category} size={18} className="text-gray-600" />;
   return (
     <img
-      src={`/hardware/${svgKey}.svg`}
+      src={src}
       alt={svgKey}
       width={20}
       height={20}
@@ -223,17 +325,17 @@ function ProductFormFields({ form, setForm }: { form: ProductForm; setForm: (f: 
         {field("stock",     "Stock (unidades)", { type: "number", min: "0", placeholder: "ej: 10" })}
       </div>
 
-      {/* Fila 3: svg_key + preview */}
+      {/* Fila 3: imagen (svg key o URL) + preview */}
       <div>
         <label className="text-[10px] font-mono text-gray-500 uppercase flex items-center gap-1">
-          <ImageIcon size={9} /> Imagen SVG key
+          <ImageIcon size={9} /> Imagen — SVG local o URL web
         </label>
         <div className="flex gap-2 mt-1">
           <div className="relative flex-1">
             <input
               value={form.svg_key}
               onChange={(e) => setForm({ ...form, svg_key: e.target.value })}
-              placeholder="ej: cpu-amd"
+              placeholder="cpu-amd  ó  https://ejemplo.com/imagen.png"
               className="w-full bg-gray-800/50 border border-gray-700/50 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-cyan-500/50"
             />
           </div>
@@ -241,6 +343,9 @@ function ProductFormFields({ form, setForm }: { form: ProductForm; setForm: (f: 
             <SvgPreview svgKey={form.svg_key || undefined} category={form.category} />
           </div>
         </div>
+        <p className="text-[9px] text-gray-600 font-mono mt-1">
+          SVG local: escribe la clave (ej: cpu-amd) · URL: pega el link completo (https://...)
+        </p>
         {suggestions.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mt-1.5">
             {suggestions.map((s) => (
@@ -304,16 +409,36 @@ function ProductFormFields({ form, setForm }: { form: ProductForm; setForm: (f: 
 
 export default function AdminPage() {
   const qc = useQueryClient();
-  const [showAdd,  setShowAdd]  = useState(false);
-  const [editId,   setEditId]   = useState<string | null>(null);
-  const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [form,     setForm]     = useState<ProductForm>(EMPTY_FORM);
-  const [search,   setSearch]   = useState("");
+  const [activeTab, setActiveTab] = useState<"productos" | "tickets">("productos");
+  const [showAdd,   setShowAdd]   = useState(false);
+  const [editId,    setEditId]    = useState<string | null>(null);
+  const [deleteId,  setDeleteId]  = useState<string | null>(null);
+  const [form,      setForm]      = useState<ProductForm>(EMPTY_FORM);
+  const [search,    setSearch]    = useState("");
 
   const { data: products = [], isLoading, error, refetch } = useQuery({
     queryKey: ["admin-hardware"],
     queryFn:  fetchAllProducts,
   });
+
+  const { data: tickets = [], refetch: refetchTickets } = useQuery({
+    queryKey: ["admin-tickets"],
+    queryFn:  fetchTickets,
+    enabled:  activeTab === "tickets",
+    refetchInterval: activeTab === "tickets" ? 30_000 : false,
+  });
+
+  const ticketMutation = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: Ticket["status"] }) =>
+      updateTicketStatus(id, status),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-tickets"] });
+      toast.success("Estado actualizado");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const openTickets = tickets.filter((t) => t.status === "abierto").length;
 
   const addMutation = useMutation({
     mutationFn: createProduct,
@@ -401,33 +526,72 @@ export default function AdminPage() {
     <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-5">
 
       {/* ── Header ──────────────────────────────────────────────────── */}
-      <div className="glass-card p-4 flex items-center justify-between gap-4 flex-wrap">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-cyan-500/15 border border-cyan-500/25 flex items-center justify-center">
-            <Shield size={18} className="text-cyan-400" />
+      <div className="glass-card p-4 space-y-3">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-cyan-500/15 border border-cyan-500/25 flex items-center justify-center">
+              <Shield size={18} className="text-cyan-400" />
+            </div>
+            <div>
+              <h1 className="text-sm font-bold text-white">Panel Admin</h1>
+              <p className="text-[10px] text-gray-500 font-mono">
+                {products.length} componentes · {tickets.length} tickets · Tech-Titan
+              </p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-sm font-bold text-white">Hardware Admin</h1>
-            <p className="text-[10px] text-gray-500 font-mono">
-              {products.length} componentes · Tech-Titan
-            </p>
+          <div className="flex gap-2 flex-wrap">
+            {activeTab === "productos" && (
+              <>
+                <button onClick={() => refetch()} className="btn-ghost py-1.5 text-xs">
+                  <RefreshCw size={12} /> Recargar
+                </button>
+                <button
+                  onClick={() => { cancelForm(); setShowAdd((v) => !v); }}
+                  className="btn-neon py-1.5 text-xs"
+                >
+                  {isFormOpen ? <X size={12} /> : <Plus size={12} />}
+                  {isFormOpen ? "Cancelar" : "Añadir"}
+                </button>
+              </>
+            )}
+            {activeTab === "tickets" && (
+              <button onClick={() => refetchTickets()} className="btn-ghost py-1.5 text-xs">
+                <RefreshCw size={12} /> Recargar
+              </button>
+            )}
           </div>
         </div>
-        <div className="flex gap-2 flex-wrap">
-          <button onClick={() => refetch()} className="btn-ghost py-1.5 text-xs">
-            <RefreshCw size={12} /> Recargar
-          </button>
-          <button
-            onClick={() => { cancelForm(); setShowAdd((v) => !v); }}
-            className="btn-neon py-1.5 text-xs"
-          >
-            {isFormOpen ? <X size={12} /> : <Plus size={12} />}
-            {isFormOpen ? "Cancelar" : "Añadir"}
-          </button>
+
+        {/* Tabs */}
+        <div className="flex gap-1 p-1 rounded-xl bg-gray-900/60 w-fit">
+          {([
+            { key: "productos", label: "Productos",  icon: <Database size={12} /> },
+            { key: "tickets",   label: "Soporte",    icon: <MessageSquarePlus size={12} />, badge: openTickets },
+          ] as const).map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all",
+                activeTab === tab.key
+                  ? "bg-cyan-500/15 text-cyan-300 border border-cyan-500/25"
+                  : "text-gray-500 hover:text-gray-300"
+              )}
+            >
+              {tab.icon}
+              {tab.label}
+              {"badge" in tab && tab.badge > 0 && (
+                <span className="ml-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/30">
+                  {tab.badge}
+                </span>
+              )}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* ── Warning ──────────────────────────────────────────────────── */}
+      {/* ── Warning (solo en tab productos) ──────────────────────────── */}
+      {activeTab === "productos" && (
       <div className="flex items-start gap-2 px-4 py-3 rounded-xl border border-amber-500/20 bg-amber-500/5 text-xs text-amber-400">
         <AlertTriangle size={13} className="mt-0.5 flex-shrink-0" />
         <span>
@@ -435,9 +599,10 @@ export default function AdminPage() {
           Para los SVGs, coloca archivos en <code className="text-amber-300 mx-1">public/hardware/&lt;key&gt;.svg</code>.
         </span>
       </div>
+      )}
 
-      {/* ── Add / Edit form ──────────────────────────────────────────── */}
-      <AnimatePresence>
+      {/* ── Add / Edit form (solo productos) ────────────────────────── */}
+      {activeTab === "productos" && <AnimatePresence>
         {isFormOpen && (
           <motion.form
             initial={{ opacity: 0, height: 0 }}
@@ -467,26 +632,27 @@ export default function AdminPage() {
             </div>
           </motion.form>
         )}
-      </AnimatePresence>
+      </AnimatePresence>}
 
-      {/* ── Search ───────────────────────────────────────────────────── */}
-      <div className="relative">
-        <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600" />
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Buscar por nombre o categoría..."
-          className="w-full bg-gray-900/60 border border-gray-800/60 rounded-xl pl-8 pr-10 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-cyan-500/30"
-        />
-        {search && (
-          <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-400">
-            <X size={12} />
-          </button>
-        )}
-      </div>
+      {/* ── Search + tabla (solo productos) ──────────────────────────── */}
+      {activeTab === "productos" && (<>
+        <div className="relative">
+          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar por nombre o categoría..."
+            className="w-full bg-gray-900/60 border border-gray-800/60 rounded-xl pl-8 pr-10 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-cyan-500/30"
+          />
+          {search && (
+            <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-400">
+              <X size={12} />
+            </button>
+          )}
+        </div>
 
-      {/* ── Product table ────────────────────────────────────────────── */}
-      {isLoading ? (
+        {/* ── Product table ──────────────────────────────────────────── */}
+        {isLoading ? (
         <div className="glass-card p-10 text-center">
           <Database size={32} className="text-gray-700 mx-auto mb-3" />
           <p className="text-sm text-gray-500 font-mono animate-pulse">Cargando componentes...</p>
@@ -591,6 +757,46 @@ export default function AdminPage() {
               ))}
             </div>
           ))}
+        </div>
+      )}
+      </>)}
+
+      {/* ── Panel de tickets ─────────────────────────────────────────── */}
+      {activeTab === "tickets" && (
+        <div className="space-y-3">
+          {/* Stats resumen */}
+          <div className="grid grid-cols-3 gap-3">
+            {TICKET_STATUS.map((s) => {
+              const count = tickets.filter((t) => t.status === s.value).length;
+              return (
+                <div key={s.value} className={cn("glass-card p-3 text-center rounded-xl border", s.color)}>
+                  <p className="text-2xl font-black">{count}</p>
+                  <p className="text-[10px] font-mono mt-0.5 opacity-80">{s.label}</p>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Lista */}
+          {tickets.length === 0 ? (
+            <div className="glass-card p-12 text-center space-y-2">
+              <MessageSquarePlus size={32} className="text-gray-700 mx-auto" />
+              <p className="text-sm text-gray-500">No hay tickets aún</p>
+              <p className="text-[10px] text-gray-700 font-mono">
+                Aparecerán aquí cuando los usuarios envíen reportes
+              </p>
+            </div>
+          ) : (
+            <AnimatePresence>
+              {tickets.map((ticket) => (
+                <TicketCard
+                  key={ticket.id}
+                  ticket={ticket}
+                  onStatusChange={(id, status) => ticketMutation.mutate({ id, status })}
+                />
+              ))}
+            </AnimatePresence>
+          )}
         </div>
       )}
     </main>

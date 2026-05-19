@@ -3,6 +3,7 @@ import { type QueryResult } from "pg";
 import { z } from "zod";
 import pool from "../../lib/db";
 import logger from "../../lib/logger";
+import { cacheInvalidate } from "../../lib/redis";
 
 const router = Router();
 
@@ -33,7 +34,7 @@ const CreateHardwareSchema = z.object({
   name:        z.string().min(2).max(255),
   category:    CategoryEnum,
   price_usd:   z.number().nonnegative().default(0),
-  svg_key:     z.string().max(100).optional(),
+  svg_key:     z.string().max(2048).optional(), // permite URLs de imagen externas
   stock:       z.number().int().nonnegative().default(0),
   description: z.string().max(2000).optional(),
   metadata:    MetadataSchema,
@@ -42,7 +43,7 @@ const CreateHardwareSchema = z.object({
 const UpdateHardwareSchema = z.object({
   name:        z.string().min(2).max(255).optional(),
   price_usd:   z.number().nonnegative().optional(),
-  svg_key:     z.string().max(100).optional(),
+  svg_key:     z.string().max(2048).optional(), // permite URLs de imagen externas
   stock:       z.number().int().nonnegative().optional(),
   description: z.string().max(2000).optional(),
   metadata:    MetadataSchema,
@@ -93,6 +94,7 @@ router.post("/", async (req: Request, res: Response): Promise<void> => {
       [name, category, price_usd, svg_key ?? null, stock, description ?? null, JSON.stringify(metadata)]
     );
 
+    await cacheInvalidate("products:*");
     logger.info(`[admin] POST /hardware → "${name}" (${category}) $${price_usd}`);
     res.status(201).json({ id: result.rows[0]!.id, name, category, price_usd, svg_key, stock, description, metadata });
   } catch (err: unknown) {
@@ -152,6 +154,7 @@ router.put("/:id", async (req: Request, res: Response): Promise<void> => {
       return;
     }
     const row = result.rows[0]!;
+    await cacheInvalidate("products:*");
     logger.info(`[admin] PUT /hardware/${id} → actualizado "${row.name}"`);
     res.json({ id: row.id, name: row.name, price_usd: parseFloat(row.price_usd) });
   } catch (err: unknown) {
@@ -180,6 +183,7 @@ router.delete("/:id", async (req: Request, res: Response): Promise<void> => {
       return;
     }
     const { name } = result.rows[0]!;
+    await cacheInvalidate("products:*");
     logger.info(`[admin] DELETE /hardware/${id} → eliminado: "${name}"`);
     res.json({ deleted: true, id, name });
   } catch (err: unknown) {

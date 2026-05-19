@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useShallow } from "zustand/react/shallow";
 import { toast } from "sonner";
-import { RotateCcw, ChevronLeft, ChevronRight, Activity, ShoppingCart, Save, FileText, Sparkles } from "lucide-react";
+import { RotateCcw, ChevronLeft, ChevronRight, Activity, ShoppingCart, Save, FileText, Sparkles, Search, X, SlidersHorizontal } from "lucide-react";
 import ProductCard from "@/components/ProductCard";
 import { StepIndicator, type BuildStep } from "@/components/StepIndicator";
 import { BuildManifest } from "@/components/BuildManifest";
@@ -79,8 +79,12 @@ export default function PCBuilderPage() {
 function PCBuilderDashboard() {
   const router             = useRouter();
   const { data: session }  = useSession();
-  const [showBudget, setShowBudget]   = useState(false);
-  const [showAudit,  setShowAudit]    = useState(false);
+  const [showBudget,  setShowBudget]  = useState(false);
+  const [showAudit,   setShowAudit]   = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
+  const [minPrice,    setMinPrice]    = useState("");
+  const [maxPrice,    setMaxPrice]    = useState("");
   const prevValidRef = useRef<boolean | null>(null);
 
   // Zustand (persistido)
@@ -121,6 +125,13 @@ function PCBuilderDashboard() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Limpiar búsqueda al cambiar de categoría
+  useEffect(() => {
+    setSearchQuery("");
+    setMinPrice("");
+    setMaxPrice("");
+  }, [currentStep]);
+
   const currencyStore = useCurrencyStore();
   const category    = STEP_CATEGORIES[currentStep] ?? ComponentCategory.CPU;
   const selectedIds = selectedList.map((p) => p.id);
@@ -136,6 +147,26 @@ function PCBuilderDashboard() {
     queryFn:   () => fetchProducts(category),
     staleTime: 5 * 60 * 1000,
   });
+
+  // Filtrado local (instantáneo, sin round-trip)
+  const filteredProducts = useMemo(() => {
+    let list = products;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      list = list.filter(
+        (p) =>
+          p.name.toLowerCase().includes(q) ||
+          (p.description ?? "").toLowerCase().includes(q)
+      );
+    }
+    const min = parseFloat(minPrice);
+    const max = parseFloat(maxPrice);
+    if (!isNaN(min)) list = list.filter((p) => p.price_usd >= min);
+    if (!isNaN(max)) list = list.filter((p) => p.price_usd <= max);
+    return list;
+  }, [products, searchQuery, minPrice, maxPrice]);
+
+  const activeFilters = Boolean(searchQuery || minPrice || maxPrice);
 
   // TanStack Query: validación (sin caché — siempre fresca)
   const sortedKey = [...selectedIds].sort().join(",");
@@ -300,7 +331,7 @@ function PCBuilderDashboard() {
           <div className="glass-card p-5">
 
             {/* Step info */}
-            <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center justify-between mb-4">
               <div className="space-y-0.5">
                 <div className="flex items-center gap-2">
                   <span className="badge-cyan text-[10px]">
@@ -312,10 +343,96 @@ function PCBuilderDashboard() {
                 </div>
                 {!loadingProducts && products.length > 0 && (
                   <p className="text-[11px] text-gray-600 font-mono">
-                    {products.length} componente{products.length !== 1 ? "s" : ""} · TanStack Query cache 5min
+                    {activeFilters
+                      ? `${filteredProducts.length} de ${products.length} componentes`
+                      : `${products.length} componente${products.length !== 1 ? "s" : ""}`}
                   </p>
                 )}
               </div>
+            </div>
+
+            {/* ── Barra de búsqueda + filtros ──────────────────────────────── */}
+            <div className="space-y-2 mb-5">
+              <div className="flex items-center gap-2">
+                {/* Búsqueda */}
+                <div className="relative flex-1">
+                  <Search
+                    size={13}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none"
+                  />
+                  <input
+                    type="text"
+                    placeholder={`Buscar ${BUILD_STEPS[currentStep]?.description ?? ""}...`}
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full bg-gray-900/60 border border-gray-700/50 rounded-lg pl-8 pr-8 py-2 text-xs text-gray-200 placeholder-gray-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 transition-colors"
+                  />
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery("")}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
+                    >
+                      <X size={12} />
+                    </button>
+                  )}
+                </div>
+
+                {/* Toggle filtro precio */}
+                <button
+                  onClick={() => setShowFilters((v) => !v)}
+                  className={cn(
+                    "p-2 rounded-lg border text-xs transition-colors",
+                    showFilters || minPrice || maxPrice
+                      ? "border-cyan-500/40 bg-cyan-500/10 text-cyan-400"
+                      : "border-gray-700/50 bg-gray-900/60 text-gray-500 hover:text-gray-300"
+                  )}
+                  title="Filtrar por precio"
+                >
+                  <SlidersHorizontal size={13} />
+                </button>
+              </div>
+
+              {/* Filtro de precio (expandible) */}
+              <AnimatePresence>
+                {showFilters && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="flex items-center gap-2 pt-1">
+                      <span className="text-[10px] text-gray-500 font-mono whitespace-nowrap">USD</span>
+                      <input
+                        type="number"
+                        placeholder="Mín"
+                        min={0}
+                        value={minPrice}
+                        onChange={(e) => setMinPrice(e.target.value)}
+                        className="w-full bg-gray-900/60 border border-gray-700/50 rounded-lg px-3 py-1.5 text-xs text-gray-200 placeholder-gray-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 transition-colors"
+                      />
+                      <span className="text-[10px] text-gray-600">—</span>
+                      <input
+                        type="number"
+                        placeholder="Máx"
+                        min={0}
+                        value={maxPrice}
+                        onChange={(e) => setMaxPrice(e.target.value)}
+                        className="w-full bg-gray-900/60 border border-gray-700/50 rounded-lg px-3 py-1.5 text-xs text-gray-200 placeholder-gray-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 transition-colors"
+                      />
+                      {(minPrice || maxPrice) && (
+                        <button
+                          onClick={() => { setMinPrice(""); setMaxPrice(""); }}
+                          className="text-gray-500 hover:text-gray-300 shrink-0"
+                        >
+                          <X size={12} />
+                        </button>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
             {/* Product grid with AnimatePresence for step transitions */}
@@ -339,17 +456,28 @@ function PCBuilderDashboard() {
                     <ProductCardSkeleton />
                     <ProductCardSkeleton />
                   </div>
-                ) : products.length === 0 ? (
+                ) : filteredProducts.length === 0 ? (
                   <div className="text-center py-14 space-y-2">
-                    <p className="text-3xl">📭</p>
-                    <p className="text-sm text-gray-500 font-medium">Sin productos disponibles</p>
-                    <p className="text-xs text-gray-600 font-mono">
-                      Ejecuta <code className="text-cyan-700">npm run seed</code> en capa-negocio
+                    <p className="text-3xl">{activeFilters ? "🔍" : "📭"}</p>
+                    <p className="text-sm text-gray-500 font-medium">
+                      {activeFilters ? "Sin resultados para esa búsqueda" : "Sin productos disponibles"}
                     </p>
+                    {activeFilters ? (
+                      <button
+                        onClick={() => { setSearchQuery(""); setMinPrice(""); setMaxPrice(""); }}
+                        className="text-xs text-cyan-600 hover:text-cyan-400 font-mono"
+                      >
+                        Limpiar filtros
+                      </button>
+                    ) : (
+                      <p className="text-xs text-gray-600 font-mono">
+                        Ejecuta <code className="text-cyan-700">npm run seed</code> en capa-negocio
+                      </p>
+                    )}
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {products.map((product, idx) => {
+                    {filteredProducts.map((product, idx) => {
                       const isSel = selected[product.category]?.id === product.id;
                       const glowState = isSel
                         ? validation?.compatible === true  ? "compatible"

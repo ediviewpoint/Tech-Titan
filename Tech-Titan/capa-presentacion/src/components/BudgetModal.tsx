@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
   X, ShoppingCart, XCircle, AlertTriangle,
-  DollarSign, Zap, FileText, ShieldCheck, Download, Link,
+  DollarSign, Zap, FileText, ShieldCheck, Download, Link, User,
 } from "lucide-react";
 import { HardwareIcon } from "./HardwareIcon";
 import { cn } from "@/lib/utils";
@@ -20,6 +20,11 @@ const STEP_CATEGORIES: Record<number, ComponentCategory> = {
   0: ComponentCategory.CPU,
   1: ComponentCategory.MOTHERBOARD,
   2: ComponentCategory.RAM,
+  3: ComponentCategory.GPU,
+  4: ComponentCategory.PSU,
+  5: ComponentCategory.STORAGE,
+  6: ComponentCategory.CASE,
+  7: ComponentCategory.COOLER,
 };
 
 interface BudgetModalProps {
@@ -153,7 +158,8 @@ export function BudgetModal({
 }: BudgetModalProps) {
   const router        = useRouter();
   const currencyStore = useCurrencyStore();
-  const [exporting, setExporting] = useState(false);
+  const [exporting,   setExporting]   = useState(false);
+  const [clientName,  setClientName]  = useState("");
 
   const components = steps
     .map((s) => selected[STEP_CATEGORIES[s.index]!])
@@ -174,12 +180,23 @@ export function BudgetModal({
     if (exporting) return;
     setExporting(true);
     try {
+      const { selectedCurrency, symbols, showWithTax, taxRate } = currencyStore;
+      const rate       = currencyStore.apiRates[selectedCurrency] ?? 1;
+      const tax        = showWithTax ? 1 + taxRate / 100 : 1;
+      const totalLocal = totalPrice * rate * tax;
+
       await exportBuildToPDF({
-        products:   components,
+        products:       components,
         totalPrice,
         totalTdp,
         validation,
-        buildUrl:   getBuildUrl(),
+        buildUrl:       getBuildUrl(),
+        clientName:     clientName.trim() || undefined,
+        currency:       selectedCurrency,
+        totalLocal,
+        currencySymbol: symbols[selectedCurrency] ?? "$",
+        showWithTax,
+        taxRate,
       });
       toast.success("PDF generado", { description: "La descarga ha comenzado." });
     } catch {
@@ -250,6 +267,22 @@ export function BudgetModal({
                 </div>
 
                 <div className="p-5 space-y-4 max-h-[70vh] overflow-y-auto">
+
+                  {/* ── Cliente (opcional) ───────────────────────────── */}
+                  <div className="relative">
+                    <User
+                      size={12}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600 pointer-events-none"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Cliente / empresa (opcional)"
+                      value={clientName}
+                      onChange={(e) => setClientName(e.target.value)}
+                      maxLength={80}
+                      className="w-full bg-gray-900/60 border border-gray-700/50 rounded-lg pl-8 pr-3 py-2 text-xs text-gray-200 placeholder-gray-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 transition-colors"
+                    />
+                  </div>
 
                   {/* ── Compatibility status ──────────────────────────── */}
                   <CompatibilityStatus validation={validation} isValidating={isValidating} />

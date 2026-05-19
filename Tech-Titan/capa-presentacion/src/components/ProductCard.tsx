@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { CheckCircle2, Plus } from "lucide-react";
 import { HardwareSVG } from "./icons/HardwareIcons";
 import { cn } from "@/lib/utils";
+import { resolveProductImage } from "@/lib/image";
 import type { HardwareProduct } from "@/types/hardware";
 
 // ─── Mini spec badges with inline SVG icons ───────────────────────────────────
@@ -141,9 +142,9 @@ export default function ProductCard({
           transition={{ duration: 0.35, type: "spring" as const, stiffness: 200, damping: 18 }}
           className="relative z-10"
         >
-          {product.svg_key ? (
+          {resolveProductImage(product.svg_key) ? (
             <img
-              src={`/hardware/${product.svg_key}.svg`}
+              src={resolveProductImage(product.svg_key)!}
               alt={product.name}
               width={56}
               height={56}

@@ -3,6 +3,8 @@ import GitHub from "next-auth/providers/github";
 import Google from "next-auth/providers/google";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  // Requerido en producción: permite que NextAuth confíe en el host del request
+  trustHost: true,
   providers: [
     GitHub({
       clientId:     process.env.GITHUB_ID     ?? "",

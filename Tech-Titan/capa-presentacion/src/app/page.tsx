@@ -193,12 +193,12 @@ function HUDCorners() {
 const TICKER_ITEMS = [
   "POSTGRES:5433",
   "REDIS:6379",
-  "MEDUSAJS:9000",
+  "EXPRESS:9000",
   "NEXT.JS:3000",
   "LATENCY:<1ms",
   "UPTIME:100%",
   "BUILD:COMPATIBLE",
-  "RULES:ACTIVE",
+  "REGLAS:5 ACTIVAS",
 ];
 
 function Ticker() {
@@ -230,15 +230,15 @@ function Ticker() {
 // ─── 6. Tech stack pills ───────────────────────────────────────────────────────
 
 const STACK: { label: string; color: string }[] = [
-  { label: "Next.js 14",    color: "#ffffff" },
-  { label: "MedusaJS",      color: "#00f2ff" },
-  { label: "PostgreSQL 15", color: "#4b8fcc" },
-  { label: "Redis 7",       color: "#ff6b6b" },
-  { label: "TypeScript",    color: "#3b82f6" },
-  { label: "Zod Schema",    color: "#00e896" },
-  { label: "Zustand",       color: "#b060ff" },
+  { label: "Next.js 14",     color: "#ffffff" },
+  { label: "Express.js",     color: "#00f2ff" },
+  { label: "PostgreSQL 15",  color: "#4b8fcc" },
+  { label: "Redis 7",        color: "#ff6b6b" },
+  { label: "TypeScript",     color: "#3b82f6" },
+  { label: "Zod Schema",     color: "#00e896" },
+  { label: "Zustand",        color: "#b060ff" },
   { label: "TanStack Query", color: "#f97316" },
-  { label: "Framer Motion", color: "#e879f9" },
+  { label: "Framer Motion",  color: "#e879f9" },
 ];
 
 // ─── 7. Stat counters ──────────────────────────────────────────────────────────
@@ -307,7 +307,7 @@ export default function HomePage() {
           />
           <span className="text-[11px] font-mono tracking-widest"
             style={{ color: "#00f2ff" }}>
-            MOTOR DE COMPATIBILIDAD · SISTEMA ACTIVO · SPRINT 8
+            MOTOR DE COMPATIBILIDAD · SISTEMA ACTIVO · LATAM
           </span>
         </motion.div>
 
@@ -459,10 +459,10 @@ export default function HomePage() {
           className="flex items-center gap-6 sm:gap-10 flex-wrap justify-center"
         >
           {[
-            { icon: Shield,     value: "9",     unit: "componentes",  color: "#00f2ff" },
-            { icon: CheckCircle2, value: "3",   unit: "reglas activas", color: "#00e896" },
-            { icon: Database,   value: "2",     unit: "bundles 100%",  color: "#b060ff" },
-            { icon: Zap,        value: "<1ms",  unit: "latencia",      color: "#ffaa00" },
+            { icon: Database,     value: "70",   unit: "productos",       color: "#00f2ff" },
+            { icon: Shield,       value: "5",    unit: "reglas activas",  color: "#00e896" },
+            { icon: Layers,       value: "8",    unit: "categorías",      color: "#b060ff" },
+            { icon: Zap,          value: "<1ms", unit: "latencia API",    color: "#ffaa00" },
           ].map(({ icon: Icon, value, unit, color }, i) => (
             <motion.div
               key={unit}

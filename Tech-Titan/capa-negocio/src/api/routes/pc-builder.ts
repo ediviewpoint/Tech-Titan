@@ -2,6 +2,7 @@ import { Router, type Request, type Response } from "express";
 import { type QueryResult } from "pg";
 import pool from "../../lib/db";
 import logger from "../../lib/logger";
+import { cacheGet, cacheSet } from "../../lib/redis";
 import { validatePCBuild } from "../../services/compatibility";
 import { validateProductIds, type ValidatedProductIdsBody } from "../middleware/validate-product-ids";
 import { type CartItem, ComponentCategory, type HardwareMetadata } from "../../types/hardware";
@@ -50,24 +51,73 @@ function mapRowToProduct(row: HardwareComponentRow) {
   };
 }
 
-// ─── GET /store/pc-builder/products?category=CPU ─────────────────────────────
+// ─── GET /store/pc-builder/products ──────────────────────────────────────────
+// Query params:
+//   category  — filtra por categoría (CPU, GPU, etc.)
+//   search    — búsqueda en nombre y descripción (ILIKE)
+//   min_price — precio mínimo en USD
+//   max_price — precio máximo en USD
 
 router.get("/products", async (req: Request, res: Response): Promise<void> => {
-  const rawCategory = req.query["category"];
-  const category    = typeof rawCategory === "string" ? rawCategory : undefined;
+  const category  = typeof req.query["category"]  === "string" ? req.query["category"]  : undefined;
+  const search    = typeof req.query["search"]    === "string" ? req.query["search"].trim() : undefined;
+  const minPrice  = typeof req.query["min_price"] === "string" ? parseFloat(req.query["min_price"]) : undefined;
+  const maxPrice  = typeof req.query["max_price"] === "string" ? parseFloat(req.query["max_price"]) : undefined;
+
+  const hasFilters = Boolean(search || minPrice !== undefined || maxPrice !== undefined);
+
+  // Cache sólo para consultas sin filtros extra (solo por categoría)
+  const cacheKey = `products:${category ?? "all"}`;
+  if (!hasFilters) {
+    const cached = await cacheGet(cacheKey);
+    if (cached) {
+      logger.info(`GET /products → cache hit [${cacheKey}]`);
+      res.status(200).json(JSON.parse(cached));
+      return;
+    }
+  }
 
   try {
-    const result: QueryResult<HardwareComponentRow> = category
-      ? await pool.query(
-          "SELECT id, name, category, price_usd, metadata, svg_key, stock, description FROM hardware_components WHERE category = $1 ORDER BY price_usd",
-          [category]
-        )
-      : await pool.query(
-          "SELECT id, name, category, price_usd, metadata, svg_key, stock, description FROM hardware_components ORDER BY category, price_usd"
-        );
+    const conditions: string[] = [];
+    const params: unknown[]    = [];
+    let   idx = 1;
 
-    logger.info(`GET /products → ${result.rowCount} (filtro: ${category ?? "todos"})`);
-    res.status(200).json({ products: result.rows.map(mapRowToProduct) });
+    if (category) {
+      conditions.push(`category = $${idx++}`);
+      params.push(category);
+    }
+    if (search) {
+      conditions.push(`(name ILIKE $${idx} OR description ILIKE $${idx})`);
+      params.push(`%${search}%`);
+      idx++;
+    }
+    if (minPrice !== undefined && !isNaN(minPrice)) {
+      conditions.push(`price_usd >= $${idx++}`);
+      params.push(minPrice);
+    }
+    if (maxPrice !== undefined && !isNaN(maxPrice)) {
+      conditions.push(`price_usd <= $${idx++}`);
+      params.push(maxPrice);
+    }
+
+    const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+    const sql   = `SELECT id, name, category, price_usd, metadata, svg_key, stock, description
+                   FROM hardware_components ${where}
+                   ORDER BY ${category ? "price_usd" : "category, price_usd"}`;
+
+    const result: QueryResult<HardwareComponentRow> = await pool.query(sql, params);
+
+    const payload = { products: result.rows.map(mapRowToProduct) };
+
+    // Guardar en cache solo si no hay filtros adicionales
+    if (!hasFilters) {
+      await cacheSet(cacheKey, JSON.stringify(payload));
+      logger.info(`GET /products → DB + cache set [${cacheKey}] (${result.rowCount} items)`);
+    } else {
+      logger.info(`GET /products → DB [search="${search}" min=${minPrice} max=${maxPrice}] → ${result.rowCount} items`);
+    }
+
+    res.status(200).json(payload);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Error interno.";
     logger.error(`GET /products falló: ${message}`);

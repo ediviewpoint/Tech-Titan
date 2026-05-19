@@ -5,10 +5,16 @@ import helmet from "helmet";
 import compression from "compression";
 import rateLimit from "express-rate-limit";
 import logger from "./lib/logger";
+import pool from "./lib/db";
 import apiRouter from "./api/index";
 
 const app  = express();
 const PORT = Number(process.env.PORT ?? 9000);
+
+if (process.env.NODE_ENV === "production" && !process.env.STORE_CORS) {
+  // Fallo inmediato: sin STORE_CORS el frontend recibe 403 en cada request
+  throw new Error("Variable de entorno STORE_CORS es obligatoria en producción");
+}
 
 const allowedOrigins = [
   process.env.STORE_CORS ?? "http://localhost:3000",
@@ -36,9 +42,14 @@ app.use(
 // ── Body parsing ──────────────────────────────────────────────────────────────
 app.use(express.json({ limit: "10kb" }));
 
-// ── Health check ──────────────────────────────────────────────────────────────
-app.get("/health", (_req, res) => {
-  res.json({ status: "ok", ts: new Date().toISOString(), env: process.env.NODE_ENV ?? "development" });
+// ── Health check (verifica DB real) ──────────────────────────────────────────
+app.get("/health", async (_req, res) => {
+  try {
+    await pool.query("SELECT 1");
+    res.json({ status: "ok", ts: new Date().toISOString() });
+  } catch {
+    res.status(503).json({ status: "unavailable", ts: new Date().toISOString() });
+  }
 });
 
 // ── API routes ────────────────────────────────────────────────────────────────

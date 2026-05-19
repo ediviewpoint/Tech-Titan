@@ -8,6 +8,7 @@ import { AuthProvider } from "@/providers/AuthProvider";
 import { AuthButton } from "@/components/AuthButton";
 import { ChatWrapper } from "@/components/ChatWrapper";
 import { CurrencySelector } from "@/components/CurrencySelector";
+import { SupportButton } from "@/components/SupportButton";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -75,6 +76,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             {children}
             {/* AI Chat flota en todas las páginas */}
             <ChatWrapper />
+            {/* Botón de soporte / tickets — esquina inferior izquierda */}
+            <SupportButton />
           </QueryProvider>
         </AuthProvider>
       </body>
