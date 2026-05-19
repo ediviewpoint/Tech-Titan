@@ -14,7 +14,9 @@ import {
 dotenv.config();
 
 const DB_URL =
-  process.env.DB_URL ?? "postgres://postgres:password123@localhost:5433/techtitan_db";
+  process.env.DATABASE_URL ??
+  process.env.DB_URL ??
+  "postgres://postgres:password123@localhost:5433/techtitan_db";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
