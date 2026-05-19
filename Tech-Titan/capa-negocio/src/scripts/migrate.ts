@@ -13,6 +13,7 @@ import { up as up1, down as down1 } from "../migrations/1716000000000-CreateHard
 import { up as up2, down as down2 } from "../migrations/1716000001000-AddExtensions";
 import { up as up3, down as down3 } from "../migrations/1716000002000-ExtendImageField";
 import { up as up4, down as down4 } from "../migrations/1716000003000-CreateTickets";
+import { up as up5, down as down5 } from "../migrations/1716000004000-AddPriceToHardware";
 
 // ─── Migration registry (orden cronológico) ───────────────────────────────────
 
@@ -20,7 +21,8 @@ const MIGRATIONS = [
   { name: "1716000000000-CreateHardwareComponents", up: up1, down: down1 },
   { name: "1716000001000-AddExtensions",            up: up2, down: down2 },
   { name: "1716000002000-ExtendImageField",         up: up3, down: down3 },
-  { name: "1716000003000-CreateTickets",            up: up4, down: down4 },
+{ name: "1716000003000-CreateTickets",            up: up4, down: down4 },
+  { name: "1716000004000-AddPriceToHardware",       up: up5, down: down5 },
 ] as const;
 
 // ─── Tabla de control ─────────────────────────────────────────────────────────
