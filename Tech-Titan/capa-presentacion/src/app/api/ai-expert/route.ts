@@ -156,14 +156,14 @@ export async function POST(req: Request): Promise<Response> {
   // Live AI mode
   try {
     const result = streamText({
-      model:       provider.model,
-      system:      SYSTEM_PROMPT,
-      messages:    [{ role: "user", content: userMessage }],
-      maxTokens:   450,
-      temperature: 0.7,
+      model:          provider.model,
+      system:         SYSTEM_PROMPT,
+      messages:       [{ role: "user", content: userMessage }],
+      maxOutputTokens: 450,
+      temperature:    0.7,
     });
 
-    const response = result.toDataStreamResponse();
+    const response = result.toTextStreamResponse();
     response.headers.set("X-AI-Provider", provider.name);
     return response;
 

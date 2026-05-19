@@ -101,7 +101,7 @@ export function AIAuditModal({
             category: c.category,
             name:     c.name,
             metadata: c.metadata,
-            price:    c.price,
+            price:    c.price_usd,
           })),
           totalPrice,
           totalTdp,

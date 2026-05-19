@@ -159,11 +159,11 @@ export async function exportBuildToPDF({
     }
 
     // Precio (derecha)
-    if (p.price !== undefined) {
+    if (p.price_usd !== undefined) {
       doc.setFontSize(8);
       doc.setFont("helvetica", "bold");
       doc.setTextColor(...C.cyan);
-      doc.text(`$${p.price.toLocaleString()}`, W - 20, y + 5, { align: "right" });
+      doc.text(`$${p.price_usd.toLocaleString()}`, W - 20, y + 5, { align: "right" });
       doc.setFontSize(5.5);
       doc.setFont("helvetica", "normal");
       doc.setTextColor(...C.gray);

@@ -1,26 +1,11 @@
-import { MigrationInterface, QueryRunner } from "typeorm";
+import pool from "../lib/db";
 
-/**
- * Migration: CreateHardwareComponents
- *
- * Crea la tabla hardware_components con índices JSONB parciales.
- * IF NOT EXISTS garantiza idempotencia — seguro de ejecutar múltiples veces.
- *
- * Ejecución:
- *   cd capa-negocio && npm run migrations:run
- *
- * Rollback:
- *   npx medusa migrations revert   (ejecuta el método `down`)
- */
-export class CreateHardwareComponents1716000000000 implements MigrationInterface {
-  name = "CreateHardwareComponents1716000000000";
+export async function up(): Promise<void> {
+  const client = await pool.connect();
+  try {
+    await client.query(`CREATE EXTENSION IF NOT EXISTS "pgcrypto"`);
 
-  async up(queryRunner: QueryRunner): Promise<void> {
-    // ── Extensión requerida para gen_random_uuid() ────────────────────────
-    await queryRunner.query(`CREATE EXTENSION IF NOT EXISTS "pgcrypto"`);
-
-    // ── Tabla principal ───────────────────────────────────────────────────
-    await queryRunner.query(`
+    await client.query(`
       CREATE TABLE IF NOT EXISTS hardware_components (
         id          UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
         name        VARCHAR(255) NOT NULL UNIQUE,
@@ -31,37 +16,41 @@ export class CreateHardwareComponents1716000000000 implements MigrationInterface
       )
     `);
 
-    // ── Índice por categoría (queries de filtrado del PC Builder) ─────────
-    await queryRunner.query(`
+    await client.query(`
       CREATE INDEX IF NOT EXISTS idx_hardware_category
         ON hardware_components (category)
     `);
 
-    // ── Índices JSONB parciales (expression indexes en PostgreSQL) ─────────
-    // Permiten filtrar por metadata->>'socket_type' sin full-table scan.
-    await queryRunner.query(`
+    await client.query(`
       CREATE INDEX IF NOT EXISTS idx_hardware_socket
         ON hardware_components ((metadata->>'socket_type'))
         WHERE metadata->>'socket_type' IS NOT NULL
     `);
 
-    await queryRunner.query(`
+    await client.query(`
       CREATE INDEX IF NOT EXISTS idx_hardware_ram_gen
         ON hardware_components ((metadata->>'ram_generation'))
         WHERE metadata->>'ram_generation' IS NOT NULL
     `);
 
-    await queryRunner.query(`
+    await client.query(`
       CREATE INDEX IF NOT EXISTS idx_hardware_category_socket
         ON hardware_components (category, (metadata->>'socket_type'))
     `);
+  } finally {
+    client.release();
   }
+}
 
-  async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP INDEX IF EXISTS idx_hardware_category_socket`);
-    await queryRunner.query(`DROP INDEX IF EXISTS idx_hardware_ram_gen`);
-    await queryRunner.query(`DROP INDEX IF EXISTS idx_hardware_socket`);
-    await queryRunner.query(`DROP INDEX IF EXISTS idx_hardware_category`);
-    await queryRunner.query(`DROP TABLE IF EXISTS hardware_components`);
+export async function down(): Promise<void> {
+  const client = await pool.connect();
+  try {
+    await client.query(`DROP INDEX IF EXISTS idx_hardware_category_socket`);
+    await client.query(`DROP INDEX IF EXISTS idx_hardware_ram_gen`);
+    await client.query(`DROP INDEX IF EXISTS idx_hardware_socket`);
+    await client.query(`DROP INDEX IF EXISTS idx_hardware_category`);
+    await client.query(`DROP TABLE IF EXISTS hardware_components`);
+  } finally {
+    client.release();
   }
 }

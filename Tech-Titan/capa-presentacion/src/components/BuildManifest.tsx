@@ -76,8 +76,8 @@ function SlotRow({
 
       {product ? (
         <div className="flex items-center gap-1.5 flex-shrink-0">
-          {product.price !== undefined && (
-            <span className="text-[10px] font-mono text-cyan-500">${product.price}</span>
+          {product.price_usd !== undefined && (
+            <span className="text-[10px] font-mono text-cyan-500">${product.price_usd}</span>
           )}
           <button onClick={onRemove} className="text-gray-600 hover:text-red-400 transition-colors p-0.5" title="Quitar">
             <X size={12} />

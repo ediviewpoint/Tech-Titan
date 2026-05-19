@@ -121,25 +121,6 @@ function PCBuilderDashboard() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Toast de validación ────────────────────────────────────────────────────
-  useEffect(() => {
-    if (!validation) return;
-    if (prevValidRef.current === validation.compatible) return;
-    prevValidRef.current = validation.compatible;
-
-    if (validation.compatible) {
-      toast.success("Build compatible ✓", {
-        description: validation.warnings.length > 0
-          ? `${validation.warnings.length} aviso(s) menor(es)`
-          : "Todos los componentes son compatibles.",
-      });
-    } else {
-      toast.error("Incompatibilidad detectada", {
-        description: validation.errors[0] ?? "Revisa el Build Manifest para más detalles.",
-      });
-    }
-  }, [validation]);
-
   const currencyStore = useCurrencyStore();
   const category    = STEP_CATEGORIES[currentStep] ?? ComponentCategory.CPU;
   const selectedIds = selectedList.map((p) => p.id);
@@ -169,6 +150,25 @@ function PCBuilderDashboard() {
     staleTime: 0,
     gcTime:    30_000,
   });
+
+  // ── Toast de validación ────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!validation) return;
+    if (prevValidRef.current === validation.compatible) return;
+    prevValidRef.current = validation.compatible;
+
+    if (validation.compatible) {
+      toast.success("Build compatible ✓", {
+        description: validation.warnings.length > 0
+          ? `${validation.warnings.length} aviso(s) menor(es)`
+          : "Todos los componentes son compatibles.",
+      });
+    } else {
+      toast.error("Incompatibilidad detectada", {
+        description: validation.errors[0] ?? "Revisa el Build Manifest para más detalles.",
+      });
+    }
+  }, [validation]);
 
   // Handlers
   const handleSelect = useCallback((product: HardwareProduct) => {

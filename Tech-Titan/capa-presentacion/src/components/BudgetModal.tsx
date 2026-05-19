@@ -44,7 +44,7 @@ const backdrop = {
 
 const card = {
   hidden:  { opacity: 0, scale: 0.92, y: 28 },
-  visible: { opacity: 1, scale: 1, y: 0, transition: { type: "spring", stiffness: 280, damping: 22, delay: 0.05 } },
+  visible: { opacity: 1, scale: 1, y: 0, transition: { type: "spring" as const, stiffness: 280, damping: 22, delay: 0.05 } },
   exit:    { opacity: 0, scale: 0.94, y: 16, transition: { duration: 0.18 } },
 };
 
@@ -88,7 +88,7 @@ function CompatibilityStatus({ validation, isValidating }: { validation: Validat
             </p>
           )}
         </div>
-        <CheckCircle2 size={14} className="text-emerald-400" />
+        <ShieldCheck size={14} className="text-emerald-400" />
       </motion.div>
     );
   }
@@ -131,8 +131,8 @@ function ComponentRow({ product, index }: { product: HardwareProduct; index: num
         <p className="text-[10px] text-gray-500 font-mono uppercase">{product.category}</p>
       </div>
       <div className="flex-shrink-0 text-right">
-        {product.price !== undefined ? (
-          <p className="text-sm font-bold text-cyan-400">${product.price.toLocaleString()}</p>
+        {product.price_usd !== undefined ? (
+          <p className="text-sm font-bold text-cyan-400">${product.price_usd.toLocaleString()}</p>
         ) : (
           <p className="text-xs text-gray-600 font-mono">—</p>
         )}

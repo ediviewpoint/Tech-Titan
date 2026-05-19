@@ -1,30 +1,29 @@
 /**
- * Crea el primer usuario administrador de MedusaJS.
- * Inserta directamente en la tabla `user` con bcrypt hash.
+ * Crea el primer usuario administrador en la tabla `admin_users`.
  *
  * Uso:
  *   cd capa-negocio
  *   ts-node src/scripts/create-admin-user.ts
- *
- * O via CLI de Medusa (alternativo):
- *   npx medusa user --email admin@techtitan.com --password TechTitan2024!
  */
 import { Client } from "pg";
+import { scrypt, randomBytes } from "crypto";
+import { promisify } from "util";
 import * as dotenv from "dotenv";
-import * as bcrypt from "bcrypt";
 import { randomUUID } from "crypto";
 
 dotenv.config();
 
-const DB_URL =
-  process.env.DB_URL ?? "postgres://postgres:password123@localhost:5433/techtitan_db";
+const scryptAsync = promisify(scrypt);
 
-// ── Credenciales del administrador ────────────────────────────────────────────
-// Cambia estos valores antes de ejecutar en producción.
-const ADMIN_EMAIL     = "admin@techtitan.com";
-const ADMIN_PASSWORD  = "TechTitan2024!";
-const ADMIN_FIRSTNAME = "Admin";
-const ADMIN_LASTNAME  = "Tech-Titan";
+const DB_URL        = process.env.DB_URL ?? "postgres://postgres:password123@localhost:5433/techtitan_db";
+const ADMIN_EMAIL    = process.env.ADMIN_EMAIL    ?? "admin@techtitan.com";
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? "TechTitan2024!";
+
+async function hashPassword(password: string): Promise<string> {
+  const salt = randomBytes(16).toString("hex");
+  const hash = await scryptAsync(password, salt, 64) as Buffer;
+  return `${salt}:${hash.toString("hex")}`;
+}
 
 async function main(): Promise<void> {
   const client = new Client({ connectionString: DB_URL });
@@ -33,38 +32,38 @@ async function main(): Promise<void> {
     await client.connect();
     console.log("[OK] Conectado a PostgreSQL");
 
-    // Verificar si el usuario ya existe
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS admin_users (
+        id            UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+        email         VARCHAR(255) NOT NULL UNIQUE,
+        password_hash TEXT         NOT NULL,
+        created_at    TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+      )
+    `);
+
     const existing = await client.query(
-      "SELECT id, email FROM public.user WHERE email = $1",
+      "SELECT id FROM admin_users WHERE email = $1",
       [ADMIN_EMAIL]
     );
 
     if (existing.rows.length > 0) {
-      console.log(`[SKIP] El usuario "${ADMIN_EMAIL}" ya existe (id: ${existing.rows[0].id})`);
-      console.log("[INFO] Para resetear la contraseña, borra el usuario y vuelve a ejecutar.");
+      console.log(`[SKIP] El usuario "${ADMIN_EMAIL}" ya existe.`);
       return;
     }
 
-    // Hash de la contraseña con bcrypt (salt rounds = 10, igual que MedusaJS)
-    const passwordHash = await bcrypt.hash(ADMIN_PASSWORD, 10);
-
+    const passwordHash = await hashPassword(ADMIN_PASSWORD);
     const id = randomUUID();
+
     await client.query(
-      `INSERT INTO public.user
-         (id, email, password_hash, first_name, last_name, role, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, $5, 'admin', NOW(), NOW())`,
-      [id, ADMIN_EMAIL, passwordHash, ADMIN_FIRSTNAME, ADMIN_LASTNAME]
+      `INSERT INTO admin_users (id, email, password_hash) VALUES ($1, $2, $3)`,
+      [id, ADMIN_EMAIL, passwordHash]
     );
 
     console.log("\n════════════════════════════════════════════");
     console.log("  USUARIO ADMINISTRADOR CREADO");
     console.log("════════════════════════════════════════════");
-    console.log(`  ID:         ${id}`);
-    console.log(`  Email:      ${ADMIN_EMAIL}`);
-    console.log(`  Password:   ${ADMIN_PASSWORD}`);
-    console.log(`  Role:       admin`);
-    console.log("════════════════════════════════════════════");
-    console.log("\n  URL de acceso: http://localhost:9000/app");
+    console.log(`  Email:    ${ADMIN_EMAIL}`);
+    console.log(`  Password: ${ADMIN_PASSWORD}`);
     console.log("════════════════════════════════════════════\n");
 
   } catch (error: unknown) {

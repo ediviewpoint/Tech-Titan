@@ -1,13 +1,20 @@
 "use client";
 
-import { useRef, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useChat } from "@ai-sdk/react";
 import { useShallow } from "zustand/react/shallow";
 import { Bot, X, Send } from "lucide-react";
 import { usePCBuilderStore, selectSelectedProducts } from "@/store/pc-builder";
 import { cn } from "@/lib/utils";
 import type { HardwareProduct } from "@/types/hardware";
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface ChatMessage {
+  id:      string;
+  role:    "user" | "assistant";
+  content: string;
+}
 
 // ─── Build context formatter ──────────────────────────────────────────────────
 
@@ -52,29 +59,92 @@ interface AIChatAssistantProps {
   onToggle: () => void;
 }
 
+const WELCOME: ChatMessage = {
+  id:      "welcome",
+  role:    "assistant",
+  content: "¡Hola! Soy el asistente AI de Tech-Titan. Puedo ayudarte a optimizar tu build y presupuesto. ¿En qué puedo ayudarte?",
+};
+
 export function AIChatAssistant({ isOpen, onToggle }: AIChatAssistantProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const selectedProducts = usePCBuilderStore(useShallow(selectSelectedProducts));
-  const buildContext = formatBuildContext(selectedProducts);
+  const abortRef       = useRef<AbortController | null>(null);
 
-  const { messages, input, handleInputChange, handleSubmit, isLoading } = useChat({
-    api: "/api/chat",
-    initialMessages: [
-      {
-        id: "welcome",
-        role: "assistant",
-        content:
-          "¡Hola! Soy el asistente AI de Tech-Titan. Puedo ayudarte a optimizar tu build y presupuesto. ¿En qué puedo ayudarte?",
-      },
-    ],
-  });
+  const selectedProducts = usePCBuilderStore(useShallow(selectSelectedProducts));
+  const buildContext     = formatBuildContext(selectedProducts);
+
+  const [messages,    setMessages]    = useState<ChatMessage[]>([WELCOME]);
+  const [input,       setInput]       = useState("");
+  const [isStreaming, setIsStreaming] = useState(false);
 
   useEffect(() => {
     if (isOpen) messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isOpen]);
 
+  async function sendMessage(text: string) {
+    if (!text.trim() || isStreaming) return;
+
+    abortRef.current?.abort();
+    abortRef.current = new AbortController();
+
+    const userMsg: ChatMessage = { id: crypto.randomUUID(), role: "user", content: text };
+    const history = [...messages, userMsg];
+    setMessages(history);
+    setInput("");
+    setIsStreaming(true);
+
+    const assistantId = crypto.randomUUID();
+    setMessages((prev) => [...prev, { id: assistantId, role: "assistant", content: "" }]);
+
+    try {
+      const res = await fetch("/api/chat", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({
+          messages: history.map((m) => ({ role: m.role, content: m.content })),
+          data:     { buildContext },
+        }),
+        signal: abortRef.current.signal,
+      });
+
+      if (!res.ok || !res.body) throw new Error("API error");
+
+      const reader  = res.body.getReader();
+      const decoder = new TextDecoder();
+      let accumulated = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
+        for (const line of chunk.split("\n")) {
+          if (line.startsWith('0:"')) {
+            try {
+              const token = JSON.parse(line.slice(2)) as string;
+              accumulated += token;
+              setMessages((prev) =>
+                prev.map((m) => m.id === assistantId ? { ...m, content: accumulated } : m)
+              );
+            } catch { /* skip malformed token */ }
+          }
+        }
+      }
+    } catch (err) {
+      if ((err as Error).name === "AbortError") return;
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === assistantId
+            ? { ...m, content: "Error al contactar el asistente. Intenta de nuevo." }
+            : m
+        )
+      );
+    } finally {
+      setIsStreaming(false);
+    }
+  }
+
   const onFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    handleSubmit(e, { data: { buildContext } });
+    e.preventDefault();
+    sendMessage(input);
   };
 
   const assistantCount = messages.filter((m) => m.role === "assistant").length - 1;
@@ -133,18 +203,10 @@ export function AIChatAssistant({ isOpen, onToggle }: AIChatAssistantProps) {
                           : "bg-gray-800/60 text-gray-200 border border-gray-700/40"
                       )}
                     >
-                      {msg.content}
+                      {msg.content || (msg.role === "assistant" && isStreaming ? <TypingDots /> : null)}
                     </div>
                   </div>
                 ))}
-
-                {isLoading && (
-                  <div className="flex justify-start">
-                    <div className="bg-gray-800/60 border border-gray-700/40 rounded-xl">
-                      <TypingDots />
-                    </div>
-                  </div>
-                )}
                 <div ref={messagesEndRef} />
               </div>
 
@@ -164,14 +226,14 @@ export function AIChatAssistant({ isOpen, onToggle }: AIChatAssistantProps) {
               >
                 <input
                   value={input}
-                  onChange={handleInputChange}
+                  onChange={(e) => setInput(e.target.value)}
                   placeholder="Pregunta sobre tu build..."
                   className="flex-1 bg-gray-800/50 border border-gray-700/50 rounded-lg px-3 py-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500/50 transition-colors"
-                  disabled={isLoading}
+                  disabled={isStreaming}
                 />
                 <button
                   type="submit"
-                  disabled={isLoading || !input.trim()}
+                  disabled={isStreaming || !input.trim()}
                   className="w-8 h-8 bg-cyan-500 hover:bg-cyan-400 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg flex items-center justify-center transition-all flex-shrink-0"
                 >
                   <Send size={12} className="text-gray-950" />

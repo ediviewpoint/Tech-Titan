@@ -83,7 +83,7 @@ export async function fetchCurrencies(): Promise<ExchangeRate[]> {
     const raw    = await parseJson<unknown>(res);
     const parsed = ExchangeRatesResponseSchema.safeParse(raw);
     if (!parsed.success) return [];
-    return parsed.data.rates;
+    return parsed.data.rates as ExchangeRate[];
   } catch {
     return [];
   }

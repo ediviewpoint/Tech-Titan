@@ -97,9 +97,9 @@ export default function CheckoutPage() {
                   <p className="text-sm text-white font-medium truncate">{p.name}</p>
                   <p className="text-[10px] text-gray-500 font-mono uppercase">{p.category}</p>
                 </div>
-                {p.price !== undefined && (
+                {p.price_usd !== undefined && (
                   <span className="text-sm font-bold text-cyan-400 flex-shrink-0">
-                    ${p.price.toLocaleString()}
+                    ${p.price_usd.toLocaleString()}
                   </span>
                 )}
               </div>

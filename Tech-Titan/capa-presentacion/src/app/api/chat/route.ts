@@ -75,13 +75,14 @@ export async function POST(req: Request): Promise<Response> {
 
   try {
     const result = streamText({
-      model: openai("gpt-4o-mini"),
+      model:          openai("gpt-4o-mini"),
       system,
-      messages,
-      maxTokens: 200,
-      temperature: 0.7,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      messages:       messages as any,
+      maxOutputTokens: 200,
+      temperature:    0.7,
     });
-    return result.toDataStreamResponse();
+    return result.toTextStreamResponse();
   } catch {
     // Fallback a demo si el modelo falla
     return mockStream(pickDemoResponse(lastText, buildContext));

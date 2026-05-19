@@ -194,14 +194,14 @@ export default function ProductCard({
         </div>
 
         {/* Price */}
-        {product.price !== undefined && (
+        {product.price_usd !== undefined && (
           <p className={cn(
             "text-lg font-bold font-mono",
             isSelected
               ? glowState === "incompatible" ? "text-red-400" : "gradient-text-accent"
               : "text-cyan-400"
           )}>
-            ${product.price.toLocaleString()}
+            ${product.price_usd.toLocaleString()}
             <span className="text-xs text-gray-600 ml-1 font-normal">USD</span>
           </p>
         )}
