@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80">
+  <!-- Background -->
+  <rect width="80" height="80" fill="#0d1117" rx="8"/>
+  <!-- Tower heatsink fins (vertical) -->
+  <rect x="18" y="12" width="5" height="46" rx="1" fill="#0a0f1a" stroke="#3b82f6" stroke-width="1"/>
+  <rect x="25" y="12" width="5" height="46" rx="1" fill="#0a0f1a" stroke="#3b82f6" stroke-width="1"/>
+  <rect x="32" y="12" width="5" height="46" rx="1" fill="#0a0f1a" stroke="#3b82f6" stroke-width="1"/>
+  <rect x="39" y="12" width="5" height="46" rx="1" fill="#0a0f1a" stroke="#3b82f6" stroke-width="1"/>
+  <rect x="46" y="12" width="5" height="46" rx="1" fill="#0a0f1a" stroke="#3b82f6" stroke-width="1"/>
+  <rect x="53" y="12" width="5" height="46" rx="1" fill="#0a0f1a" stroke="#3b82f6" stroke-width="1"/>
+  <!-- Heat pipes crossing the fins -->
+  <ellipse cx="40" cy="22" rx="22" ry="3" fill="none" stroke="#3b82f6" stroke-width="1.2" opacity="0.7"/>
+  <ellipse cx="40" cy="32" rx="22" ry="3" fill="none" stroke="#3b82f6" stroke-width="1.2" opacity="0.7"/>
+  <!-- Fan outline (mounted on side) -->
+  <rect x="60" y="18" width="14" height="44" rx="2" fill="none" stroke="#3b82f6" stroke-width="1"/>
+  <circle cx="67" cy="40" r="5" fill="none" stroke="#3b82f6" stroke-width="0.8"/>
+  <circle cx="67" cy="40" r="2" fill="#3b82f6" opacity="0.3"/>
+  <!-- Fan blades (simplified) -->
+  <line x1="67" y1="35" x2="67" y2="45" stroke="#3b82f6" stroke-width="0.8" opacity="0.5"/>
+  <line x1="62" y1="40" x2="72" y2="40" stroke="#3b82f6" stroke-width="0.8" opacity="0.5"/>
+  <line x1="63.5" y1="36.5" x2="70.5" y2="43.5" stroke="#3b82f6" stroke-width="0.6" opacity="0.4"/>
+  <line x1="70.5" y1="36.5" x2="63.5" y2="43.5" stroke="#3b82f6" stroke-width="0.6" opacity="0.4"/>
+  <!-- Base plate at bottom -->
+  <rect x="16" y="56" width="44" height="5" rx="1" fill="#0a0f1a" stroke="#3b82f6" stroke-width="1"/>
+  <!-- Base contact area -->
+  <rect x="22" y="61" width="32" height="4" rx="1" fill="none" stroke="#3b82f6" stroke-width="0.8" opacity="0.5"/>
+</svg>

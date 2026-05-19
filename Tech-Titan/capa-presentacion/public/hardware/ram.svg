@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80">
+  <!-- Background -->
+  <rect width="80" height="80" fill="#0d1117" rx="8"/>
+  <!-- RAM stick body -->
+  <rect x="22" y="12" width="36" height="48" rx="2" fill="#100a1a" stroke="#8b5cf6" stroke-width="1.5"/>
+  <!-- PCB notch (key) at bottom -->
+  <rect x="22" y="55" width="13" height="5" rx="0" fill="#0d1117"/>
+  <rect x="45" y="55" width="13" height="5" rx="0" fill="#0d1117"/>
+  <!-- Gold pins at bottom -->
+  <line x1="25" y1="58" x2="25" y2="65" stroke="#f59e0b" stroke-width="1.5"/>
+  <line x1="28" y1="58" x2="28" y2="65" stroke="#f59e0b" stroke-width="1.5"/>
+  <line x1="31" y1="58" x2="31" y2="65" stroke="#f59e0b" stroke-width="1.5"/>
+  <line x1="34" y1="58" x2="34" y2="65" stroke="#f59e0b" stroke-width="1.5"/>
+  <line x1="46" y1="58" x2="46" y2="65" stroke="#f59e0b" stroke-width="1.5"/>
+  <line x1="49" y1="58" x2="49" y2="65" stroke="#f59e0b" stroke-width="1.5"/>
+  <line x1="52" y1="58" x2="52" y2="65" stroke="#f59e0b" stroke-width="1.5"/>
+  <line x1="55" y1="58" x2="55" y2="65" stroke="#f59e0b" stroke-width="1.5"/>
+  <!-- RAM chips on stick -->
+  <rect x="25" y="16" width="8" height="10" rx="1" fill="#1a1030" stroke="#8b5cf6" stroke-width="0.8"/>
+  <rect x="36" y="16" width="8" height="10" rx="1" fill="#1a1030" stroke="#8b5cf6" stroke-width="0.8"/>
+  <rect x="47" y="16" width="8" height="10" rx="1" fill="#1a1030" stroke="#8b5cf6" stroke-width="0.8"/>
+  <rect x="25" y="29" width="8" height="10" rx="1" fill="#1a1030" stroke="#8b5cf6" stroke-width="0.8"/>
+  <rect x="36" y="29" width="8" height="10" rx="1" fill="#1a1030" stroke="#8b5cf6" stroke-width="0.8"/>
+  <rect x="47" y="29" width="8" height="10" rx="1" fill="#1a1030" stroke="#8b5cf6" stroke-width="0.8"/>
+  <!-- RGB light bar accent at top -->
+  <rect x="22" y="12" width="36" height="4" rx="2" fill="#8b5cf6" opacity="0.3"/>
+  <line x1="22" y1="14" x2="58" y2="14" stroke="#8b5cf6" stroke-width="1.5" opacity="0.8"/>
+  <!-- Label -->
+  <text x="40" y="50" font-family="monospace" font-size="5" fill="#8b5cf6" text-anchor="middle" opacity="0.8">DDR5</text>
+</svg>

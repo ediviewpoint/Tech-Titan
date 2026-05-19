@@ -30,16 +30,22 @@ const MetadataSchema = z.object({
 }).optional().default({});
 
 const CreateHardwareSchema = z.object({
-  name:      z.string().min(2).max(255),
-  category:  CategoryEnum,
-  price_usd: z.number().nonnegative().default(0),
-  metadata:  MetadataSchema,
+  name:        z.string().min(2).max(255),
+  category:    CategoryEnum,
+  price_usd:   z.number().nonnegative().default(0),
+  svg_key:     z.string().max(100).optional(),
+  stock:       z.number().int().nonnegative().default(0),
+  description: z.string().max(2000).optional(),
+  metadata:    MetadataSchema,
 });
 
 const UpdateHardwareSchema = z.object({
-  name:      z.string().min(2).max(255).optional(),
-  price_usd: z.number().nonnegative().optional(),
-  metadata:  MetadataSchema,
+  name:        z.string().min(2).max(255).optional(),
+  price_usd:   z.number().nonnegative().optional(),
+  svg_key:     z.string().max(100).optional(),
+  stock:       z.number().int().nonnegative().optional(),
+  description: z.string().max(2000).optional(),
+  metadata:    MetadataSchema,
 });
 
 // ─── GET /store/admin/hardware ────────────────────────────────────────────────
@@ -47,9 +53,11 @@ const UpdateHardwareSchema = z.object({
 router.get("/", async (_req: Request, res: Response): Promise<void> => {
   try {
     const result: QueryResult<{
-      id: string; name: string; category: string; price_usd: string; metadata: unknown; updated_at: Date;
+      id: string; name: string; category: string; price_usd: string;
+      svg_key: string | null; stock: number; description: string | null;
+      metadata: unknown; updated_at: Date;
     }> = await pool.query(
-      "SELECT id, name, category, price_usd, metadata, updated_at FROM hardware_components ORDER BY category, price_usd"
+      "SELECT id, name, category, price_usd, svg_key, stock, description, metadata, updated_at FROM hardware_components ORDER BY category, price_usd"
     );
 
     res.json({
@@ -75,18 +83,18 @@ router.post("/", async (req: Request, res: Response): Promise<void> => {
     return;
   }
 
-  const { name, category, price_usd, metadata } = parsed.data;
+  const { name, category, price_usd, svg_key, stock, description, metadata } = parsed.data;
 
   try {
     const result: QueryResult<{ id: string }> = await pool.query(
-      `INSERT INTO hardware_components (name, category, price_usd, metadata)
-       VALUES ($1, $2, $3, $4)
+      `INSERT INTO hardware_components (name, category, price_usd, svg_key, stock, description, metadata)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING id`,
-      [name, category, price_usd, JSON.stringify(metadata)]
+      [name, category, price_usd, svg_key ?? null, stock, description ?? null, JSON.stringify(metadata)]
     );
 
     logger.info(`[admin] POST /hardware → "${name}" (${category}) $${price_usd}`);
-    res.status(201).json({ id: result.rows[0]!.id, name, category, price_usd, metadata });
+    res.status(201).json({ id: result.rows[0]!.id, name, category, price_usd, svg_key, stock, description, metadata });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Error interno.";
     if (msg.includes("unique") || msg.includes("duplicate")) {
@@ -119,9 +127,12 @@ router.put("/:id", async (req: Request, res: Response): Promise<void> => {
   const values:  unknown[] = [];
   let   idx = 1;
 
-  if (parsed.data.name      !== undefined) { updates.push(`name      = $${idx++}`); values.push(parsed.data.name); }
-  if (parsed.data.price_usd !== undefined) { updates.push(`price_usd = $${idx++}`); values.push(parsed.data.price_usd); }
-  if (parsed.data.metadata  !== undefined) { updates.push(`metadata  = $${idx++}`); values.push(JSON.stringify(parsed.data.metadata)); }
+  if (parsed.data.name        !== undefined) { updates.push(`name        = $${idx++}`); values.push(parsed.data.name); }
+  if (parsed.data.price_usd  !== undefined) { updates.push(`price_usd  = $${idx++}`); values.push(parsed.data.price_usd); }
+  if (parsed.data.svg_key    !== undefined) { updates.push(`svg_key    = $${idx++}`); values.push(parsed.data.svg_key); }
+  if (parsed.data.stock      !== undefined) { updates.push(`stock      = $${idx++}`); values.push(parsed.data.stock); }
+  if (parsed.data.description !== undefined) { updates.push(`description = $${idx++}`); values.push(parsed.data.description); }
+  if (parsed.data.metadata   !== undefined) { updates.push(`metadata   = $${idx++}`); values.push(JSON.stringify(parsed.data.metadata)); }
 
   if (updates.length === 0) {
     res.status(400).json({ error: "Ningún campo para actualizar." });

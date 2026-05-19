@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80">
+  <!-- Background -->
+  <rect width="80" height="80" fill="#0d1117" rx="8"/>
+  <!-- PCB body -->
+  <rect x="8" y="8" width="64" height="64" rx="2" fill="#0a1a14" stroke="#06b6d4" stroke-width="1.5"/>
+  <!-- CPU socket (center-left area) -->
+  <rect x="14" y="14" width="22" height="22" rx="1" fill="none" stroke="#06b6d4" stroke-width="1"/>
+  <rect x="17" y="17" width="16" height="16" rx="1" fill="#061210" stroke="#06b6d4" stroke-width="0.8" opacity="0.7"/>
+  <text x="25" y="27" font-family="monospace" font-size="4" fill="#06b6d4" text-anchor="middle" opacity="0.8">CPU</text>
+  <!-- RAM slots (right side vertical) -->
+  <rect x="52" y="12" width="6" height="22" rx="1" fill="none" stroke="#8b5cf6" stroke-width="1"/>
+  <rect x="60" y="12" width="6" height="22" rx="1" fill="none" stroke="#8b5cf6" stroke-width="1"/>
+  <rect x="52" y="36" width="6" height="22" rx="1" fill="none" stroke="#8b5cf6" stroke-width="0.8" opacity="0.6"/>
+  <rect x="60" y="36" width="6" height="22" rx="1" fill="none" stroke="#8b5cf6" stroke-width="0.8" opacity="0.6"/>
+  <!-- PCIe slots (bottom horizontal) -->
+  <rect x="10" y="52" width="40" height="5" rx="1" fill="none" stroke="#06b6d4" stroke-width="1"/>
+  <rect x="10" y="60" width="30" height="4" rx="1" fill="none" stroke="#06b6d4" stroke-width="0.8" opacity="0.6"/>
+  <!-- M.2 slot -->
+  <rect x="34" y="18" width="14" height="4" rx="1" fill="none" stroke="#14b8a6" stroke-width="0.8"/>
+  <!-- Chipset -->
+  <rect x="36" y="38" width="10" height="10" rx="1" fill="#061210" stroke="#06b6d4" stroke-width="0.8"/>
+  <text x="41" y="45" font-family="monospace" font-size="3" fill="#06b6d4" text-anchor="middle">PCH</text>
+  <!-- Circuit traces -->
+  <line x1="25" y1="36" x2="25" y2="52" stroke="#06b6d4" stroke-width="0.6" opacity="0.4"/>
+  <line x1="25" y1="36" x2="41" y2="36" stroke="#06b6d4" stroke-width="0.6" opacity="0.4"/>
+  <line x1="41" y1="36" x2="41" y2="48" stroke="#06b6d4" stroke-width="0.6" opacity="0.4"/>
+  <line x1="36" y1="25" x2="36" y2="22" stroke="#06b6d4" stroke-width="0.6" opacity="0.4"/>
+  <!-- IO panel placeholder -->
+  <rect x="8" y="8" width="4" height="30" rx="0" fill="#0d2a20" stroke="#06b6d4" stroke-width="0.5" opacity="0.5"/>
+  <!-- Corner mounting holes -->
+  <circle cx="11" cy="11" r="2" fill="none" stroke="#06b6d4" stroke-width="0.8" opacity="0.4"/>
+  <circle cx="69" cy="11" r="2" fill="none" stroke="#06b6d4" stroke-width="0.8" opacity="0.4"/>
+  <circle cx="11" cy="69" r="2" fill="none" stroke="#06b6d4" stroke-width="0.8" opacity="0.4"/>
+  <circle cx="69" cy="69" r="2" fill="none" stroke="#06b6d4" stroke-width="0.8" opacity="0.4"/>
+</svg>

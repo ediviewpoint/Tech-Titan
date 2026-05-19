@@ -135,24 +135,38 @@ export default function ProductCard({
         {/* Scanline overlay */}
         <div className="scanline" aria-hidden />
 
-        {/* Hardware SVG — scales with animation on selection */}
+        {/* Hardware image — SVG file if svg_key exists, fallback to HardwareSVG */}
         <motion.div
           animate={isSelected ? { scale: 1.08 } : { scale: 1 }}
-          transition={{ duration: 0.35, type: "spring", stiffness: 200, damping: 18 }}
+          transition={{ duration: 0.35, type: "spring" as const, stiffness: 200, damping: 18 }}
           className="relative z-10"
         >
-          <HardwareSVG
-            category={product.category}
-            size={52}
-            glow={isSelected ? glowState : null}
-            className={cn(
-              "transition-colors duration-300",
-              isSelected
-                ? glowState === "incompatible" ? "text-red-400"
-                : "text-cyan-300"
-                : "text-gray-500 group-hover:text-cyan-400"
-            )}
-          />
+          {product.svg_key ? (
+            <img
+              src={`/hardware/${product.svg_key}.svg`}
+              alt={product.name}
+              width={56}
+              height={56}
+              className={cn(
+                "object-contain transition-all duration-300",
+                isSelected ? "drop-shadow-[0_0_10px_rgba(6,182,212,0.6)]" : "opacity-75 group-hover:opacity-100"
+              )}
+              onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+            />
+          ) : (
+            <HardwareSVG
+              category={product.category}
+              size={52}
+              glow={isSelected ? glowState : null}
+              className={cn(
+                "transition-colors duration-300",
+                isSelected
+                  ? glowState === "incompatible" ? "text-red-400"
+                  : "text-cyan-300"
+                  : "text-gray-500 group-hover:text-cyan-400"
+              )}
+            />
+          )}
         </motion.div>
 
         {/* Category label */}
@@ -180,9 +194,14 @@ export default function ProductCard({
 
       {/* ── Content ──────────────────────────────────────────────────── */}
       <div className="p-4 space-y-3">
-        <h3 className="font-semibold text-sm text-white leading-tight line-clamp-2">
-          {product.name}
-        </h3>
+        <div>
+          <h3 className="font-semibold text-sm text-white leading-tight line-clamp-2">
+            {product.name}
+          </h3>
+          {product.description && (
+            <p className="text-[10px] text-gray-500 mt-0.5 line-clamp-1">{product.description}</p>
+          )}
+        </div>
 
         {/* Spec badges with mini SVG icons */}
         <div className="flex flex-wrap gap-1.5">
@@ -192,6 +211,18 @@ export default function ProductCard({
           {metadata.tdp_watts      && <TDPBadge     watts={metadata.tdp_watts} />}
           {metadata.wattage_watts  && <WattageBadge watts={metadata.wattage_watts} />}
         </div>
+
+        {/* Stock */}
+        {product.stock === 0 && (
+          <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-red-500/15 text-red-400 border border-red-500/20">
+            Sin stock
+          </span>
+        )}
+        {product.stock > 0 && product.stock <= 3 && (
+          <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/20">
+            Últimas {product.stock} ud{product.stock > 1 ? "s" : ""}
+          </span>
+        )}
 
         {/* Price */}
         {product.price_usd !== undefined && (

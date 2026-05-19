@@ -35,11 +35,14 @@ export const HardwareMetadataSchema = z.object({
 // ─── Product ──────────────────────────────────────────────────────────────────
 
 export const HardwareProductSchema = z.object({
-  id:        z.string().uuid(),
-  name:      z.string().min(1),
-  category:  ComponentCategorySchema,
-  price_usd: z.number().nonnegative(),
-  metadata:  HardwareMetadataSchema,
+  id:          z.string().uuid(),
+  name:        z.string().min(1),
+  category:    ComponentCategorySchema,
+  price_usd:   z.number().nonnegative(),
+  metadata:    HardwareMetadataSchema,
+  svg_key:     z.string().optional(),
+  stock:       z.number().int().nonnegative().default(0),
+  description: z.string().optional(),
 });
 
 // ─── API responses ────────────────────────────────────────────────────────────

@@ -5,8 +5,9 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import {
-  Shield, Cpu, Plus, Trash2, RefreshCw, Database,
-  AlertTriangle, ChevronDown, ChevronUp,
+  Shield, Plus, Trash2, RefreshCw, Database, AlertTriangle,
+  ChevronDown, ChevronUp, Pencil, Search, X, Package,
+  DollarSign, Layers, Image as ImageIcon,
 } from "lucide-react";
 import { HardwareIcon } from "@/components/HardwareIcon";
 import { cn } from "@/lib/utils";
@@ -14,38 +15,117 @@ import { cn } from "@/lib/utils";
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface HardwareRow {
-  id:       string;
-  name:     string;
-  category: string;
-  metadata: Record<string, unknown>;
+  id:          string;
+  name:        string;
+  category:    string;
+  price_usd:   number;
+  stock:       number;
+  svg_key?:    string;
+  description?: string;
+  metadata:    Record<string, unknown>;
+  updated_at:  string;
 }
 
-interface AddForm {
-  name:     string;
-  category: string;
-  socket_type:    string;
-  form_factor:    string;
-  ram_generation: string;
-  tdp_watts:      string;
-  wattage_watts:  string;
+interface ProductForm {
+  name:               string;
+  category:           string;
+  price_usd:          string;
+  stock:              string;
+  svg_key:            string;
+  description:        string;
+  socket_type:        string;
+  form_factor:        string;
+  ram_generation:     string;
+  tdp_watts:          string;
+  wattage_watts:      string;
+  capacity_gb:        string;
+  vram_gb:            string;
+  speed_mhz:          string;
+  storage_capacity_gb: string;
+  interface_type:     string;
+  cooler_type:        string;
+  tdp_rating:         string;
 }
 
-const EMPTY_FORM: AddForm = {
-  name: "", category: "CPU",
+const EMPTY_FORM: ProductForm = {
+  name: "", category: "CPU", price_usd: "", stock: "0",
+  svg_key: "", description: "",
   socket_type: "", form_factor: "", ram_generation: "",
-  tdp_watts: "", wattage_watts: "",
+  tdp_watts: "", wattage_watts: "", capacity_gb: "", vram_gb: "",
+  speed_mhz: "", storage_capacity_gb: "", interface_type: "",
+  cooler_type: "", tdp_rating: "",
 };
 
-const CATEGORIES = ["CPU", "Motherboard", "RAM", "GPU", "PSU", "Storage"];
-const BACKEND = "/api/backend";
+const CATEGORIES = ["CPU", "Motherboard", "RAM", "GPU", "PSU", "Storage", "Case", "Cooler"];
+const BACKEND    = "/api/backend";
+
+// Sugerencias de svg_key por categoría
+const SVG_SUGGESTIONS: Record<string, string[]> = {
+  CPU:         ["cpu-amd", "cpu-intel"],
+  GPU:         ["gpu-nvidia", "gpu-amd"],
+  RAM:         ["ram", "ram-corsair", "ram-gskill"],
+  Motherboard: ["motherboard"],
+  PSU:         ["psu", "psu-corsair"],
+  Storage:     ["storage-nvme", "storage-sata", "storage-hdd"],
+  Case:        ["case"],
+  Cooler:      ["cooler-air", "cooler-aio"],
+};
 
 // ─── API helpers ──────────────────────────────────────────────────────────────
 
 async function fetchAllProducts(): Promise<HardwareRow[]> {
-  const res = await fetch(`${BACKEND}/store/pc-builder/products`, { cache: "no-store" });
-  if (!res.ok) throw new Error("Error al cargar productos");
-  const data = await res.json() as { products: HardwareRow[] };
-  return data.products;
+  const res = await fetch(`${BACKEND}/store/admin/hardware`, { cache: "no-store" });
+  if (!res.ok) throw new Error("Error al cargar componentes");
+  const data = await res.json() as { components: HardwareRow[] };
+  return data.components;
+}
+
+function formToPayload(form: ProductForm) {
+  const metadata: Record<string, unknown> = {};
+  if (form.socket_type)         metadata.socket_type         = form.socket_type;
+  if (form.form_factor)         metadata.form_factor         = form.form_factor;
+  if (form.ram_generation)      metadata.ram_generation      = form.ram_generation;
+  if (form.tdp_watts)           metadata.tdp_watts           = Number(form.tdp_watts);
+  if (form.wattage_watts)       metadata.wattage_watts       = Number(form.wattage_watts);
+  if (form.capacity_gb)         metadata.capacity_gb         = Number(form.capacity_gb);
+  if (form.vram_gb)             metadata.vram_gb             = Number(form.vram_gb);
+  if (form.speed_mhz)           metadata.speed_mhz           = Number(form.speed_mhz);
+  if (form.storage_capacity_gb) metadata.storage_capacity_gb = Number(form.storage_capacity_gb);
+  if (form.interface_type)      metadata.interface_type      = form.interface_type;
+  if (form.cooler_type)         metadata.cooler_type         = form.cooler_type;
+  if (form.tdp_rating)          metadata.tdp_rating          = Number(form.tdp_rating);
+
+  return {
+    name:        form.name.trim(),
+    category:    form.category,
+    price_usd:   Number(form.price_usd) || 0,
+    stock:       Number(form.stock) || 0,
+    svg_key:     form.svg_key.trim() || undefined,
+    description: form.description.trim() || undefined,
+    metadata,
+  };
+}
+
+async function createProduct(form: ProductForm): Promise<void> {
+  const res = await fetch(`${BACKEND}/store/admin/hardware`, {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(formToPayload(form)),
+  });
+  if (!res.ok) {
+    const err = await res.json() as { error?: string };
+    throw new Error(err.error ?? "Error al crear componente");
+  }
+}
+
+async function updateProduct(id: string, form: ProductForm): Promise<void> {
+  const res = await fetch(`${BACKEND}/store/admin/hardware/${id}`, {
+    method: "PUT", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(formToPayload(form)),
+  });
+  if (!res.ok) {
+    const err = await res.json() as { error?: string };
+    throw new Error(err.error ?? "Error al actualizar");
+  }
 }
 
 async function deleteProduct(id: string): Promise<void> {
@@ -56,45 +136,201 @@ async function deleteProduct(id: string): Promise<void> {
   }
 }
 
-async function createProduct(form: AddForm): Promise<void> {
-  const metadata: Record<string, unknown> = {};
-  if (form.socket_type)    metadata.socket_type    = form.socket_type;
-  if (form.form_factor)    metadata.form_factor    = form.form_factor;
-  if (form.ram_generation) metadata.ram_generation = form.ram_generation;
-  if (form.tdp_watts)      metadata.tdp_watts      = Number(form.tdp_watts);
-  if (form.wattage_watts)  metadata.wattage_watts  = Number(form.wattage_watts);
+// ─── Stock badge ──────────────────────────────────────────────────────────────
 
-  const res = await fetch(`${BACKEND}/store/admin/hardware`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name: form.name, category: form.category, metadata }),
-  });
-  if (!res.ok) {
-    const err = await res.json() as { error?: string };
-    throw new Error(err.error ?? "Error al crear producto");
-  }
+function StockBadge({ stock }: { stock: number }) {
+  if (stock === 0) return <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-red-500/15 text-red-400 border border-red-500/25">Sin stock</span>;
+  if (stock <= 5)  return <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/25">{stock} uds</span>;
+  return <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">{stock} uds</span>;
 }
 
-// ─── Component ───────────────────────────────────────────────────────────────
+// ─── Product image preview ────────────────────────────────────────────────────
+
+function SvgPreview({ svgKey, category }: { svgKey?: string; category: string }) {
+  if (!svgKey) return <HardwareIcon category={category} size={18} className="text-gray-600" />;
+  return (
+    <img
+      src={`/hardware/${svgKey}.svg`}
+      alt={svgKey}
+      width={20}
+      height={20}
+      className="object-contain"
+      onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+    />
+  );
+}
+
+// ─── Form component ───────────────────────────────────────────────────────────
+
+function ProductFormFields({ form, setForm }: { form: ProductForm; setForm: (f: ProductForm) => void }) {
+  const suggestions = SVG_SUGGESTIONS[form.category] ?? [];
+
+  const field = (key: keyof ProductForm, label: string, extra?: Partial<React.InputHTMLAttributes<HTMLInputElement>>) => (
+    <div key={key}>
+      <label className="text-[10px] font-mono text-gray-500 uppercase">{label}</label>
+      <input
+        value={form[key]}
+        onChange={(e) => setForm({ ...form, [key]: e.target.value })}
+        className="mt-1 w-full bg-gray-800/50 border border-gray-700/50 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-cyan-500/50"
+        {...extra}
+      />
+    </div>
+  );
+
+  const sel = (key: keyof ProductForm, label: string, opts: string[]) => (
+    <div key={key}>
+      <label className="text-[10px] font-mono text-gray-500 uppercase">{label}</label>
+      <select
+        value={form[key]}
+        onChange={(e) => setForm({ ...form, [key]: e.target.value })}
+        className="mt-1 w-full bg-gray-800/50 border border-gray-700/50 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500/50"
+      >
+        <option value="">— Ninguno —</option>
+        {opts.map((o) => <option key={o} value={o}>{o}</option>)}
+      </select>
+    </div>
+  );
+
+  return (
+    <div className="space-y-4">
+      {/* Fila 1: nombre + categoría */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="sm:col-span-2">
+          <label className="text-[10px] font-mono text-gray-500 uppercase">Nombre *</label>
+          <input
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            placeholder="ej: AMD Ryzen 9 7950X"
+            required
+            className="mt-1 w-full bg-gray-800/50 border border-gray-700/50 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-cyan-500/50"
+          />
+        </div>
+        <div>
+          <label className="text-[10px] font-mono text-gray-500 uppercase">Categoría</label>
+          <select
+            value={form.category}
+            onChange={(e) => setForm({ ...form, category: e.target.value })}
+            className="mt-1 w-full bg-gray-800/50 border border-gray-700/50 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500/50"
+          >
+            {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </div>
+      </div>
+
+      {/* Fila 2: precio + stock */}
+      <div className="grid grid-cols-2 gap-3">
+        {field("price_usd", "Precio USD *", { type: "number", min: "0", step: "0.01", placeholder: "ej: 299.99" })}
+        {field("stock",     "Stock (unidades)", { type: "number", min: "0", placeholder: "ej: 10" })}
+      </div>
+
+      {/* Fila 3: svg_key + preview */}
+      <div>
+        <label className="text-[10px] font-mono text-gray-500 uppercase flex items-center gap-1">
+          <ImageIcon size={9} /> Imagen SVG key
+        </label>
+        <div className="flex gap-2 mt-1">
+          <div className="relative flex-1">
+            <input
+              value={form.svg_key}
+              onChange={(e) => setForm({ ...form, svg_key: e.target.value })}
+              placeholder="ej: cpu-amd"
+              className="w-full bg-gray-800/50 border border-gray-700/50 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-cyan-500/50"
+            />
+          </div>
+          <div className="w-10 h-10 rounded-lg border border-gray-700/50 bg-gray-800/50 flex items-center justify-center flex-shrink-0">
+            <SvgPreview svgKey={form.svg_key || undefined} category={form.category} />
+          </div>
+        </div>
+        {suggestions.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mt-1.5">
+            {suggestions.map((s) => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => setForm({ ...form, svg_key: s })}
+                className={cn(
+                  "text-[10px] font-mono px-2 py-0.5 rounded-md border transition-colors",
+                  form.svg_key === s
+                    ? "bg-cyan-500/20 border-cyan-500/40 text-cyan-300"
+                    : "border-gray-700/50 text-gray-500 hover:border-gray-600 hover:text-gray-400"
+                )}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Descripción */}
+      <div>
+        <label className="text-[10px] font-mono text-gray-500 uppercase">Descripción</label>
+        <textarea
+          value={form.description}
+          onChange={(e) => setForm({ ...form, description: e.target.value })}
+          placeholder="Descripción breve del producto..."
+          rows={2}
+          className="mt-1 w-full bg-gray-800/50 border border-gray-700/50 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-cyan-500/50 resize-none"
+        />
+      </div>
+
+      {/* Specs técnicas */}
+      <details className="group">
+        <summary className="cursor-pointer text-[10px] font-mono text-gray-500 uppercase tracking-widest list-none flex items-center gap-1 hover:text-gray-400 transition-colors">
+          <Layers size={9} />
+          Especificaciones técnicas
+          <ChevronDown size={9} className="group-open:rotate-180 transition-transform" />
+        </summary>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-3">
+          {sel("socket_type",    "Socket",        ["AM4", "AM5", "LGA1700", "LGA1200"])}
+          {sel("form_factor",    "Form Factor",   ["ATX", "MATX", "ITX"])}
+          {sel("ram_generation", "RAM Gen",       ["DDR4", "DDR5"])}
+          {sel("interface_type", "Storage Interface", ["NVMe_PCIe4", "NVMe_PCIe3", "SATA", "HDD"])}
+          {sel("cooler_type",    "Cooler Type",   ["Stock", "Air", "AIO_120", "AIO_240", "AIO_280", "AIO_360"])}
+          {field("tdp_watts",           "TDP (W)",          { type: "number", min: "0" })}
+          {field("wattage_watts",       "Wattage PSU (W)",  { type: "number", min: "0" })}
+          {field("capacity_gb",         "Capacidad RAM (GB)", { type: "number", min: "0" })}
+          {field("vram_gb",             "VRAM (GB)",         { type: "number", min: "0" })}
+          {field("speed_mhz",           "Velocidad (MHz)",   { type: "number", min: "0" })}
+          {field("storage_capacity_gb", "Storage (GB)",      { type: "number", min: "0" })}
+          {field("tdp_rating",          "TDP Rating cooler", { type: "number", min: "0" })}
+        </div>
+      </details>
+    </div>
+  );
+}
+
+// ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function AdminPage() {
   const qc = useQueryClient();
-  const [showAdd, setShowAdd] = useState(false);
-  const [form, setForm]       = useState<AddForm>(EMPTY_FORM);
+  const [showAdd,  setShowAdd]  = useState(false);
+  const [editId,   setEditId]   = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [form,     setForm]     = useState<ProductForm>(EMPTY_FORM);
+  const [search,   setSearch]   = useState("");
 
   const { data: products = [], isLoading, error, refetch } = useQuery({
     queryKey: ["admin-hardware"],
-    queryFn: fetchAllProducts,
+    queryFn:  fetchAllProducts,
   });
 
   const addMutation = useMutation({
     mutationFn: createProduct,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin-hardware"] });
-      setForm(EMPTY_FORM);
-      setShowAdd(false);
-      toast.success("Componente creado exitosamente");
+      setForm(EMPTY_FORM); setShowAdd(false);
+      toast.success("Componente creado");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const editMutation = useMutation({
+    mutationFn: ({ id, form }: { id: string; form: ProductForm }) => updateProduct(id, form),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-hardware"] });
+      setEditId(null); setForm(EMPTY_FORM);
+      toast.success("Componente actualizado");
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -109,61 +345,100 @@ export default function AdminPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  // Group by category
-  const byCategory = products.reduce<Record<string, HardwareRow[]>>((acc, p) => {
-    (acc[p.category] ??= []).push(p);
-    return acc;
-  }, {});
+  function startEdit(p: HardwareRow) {
+    const m = p.metadata as Record<string, string | number>;
+    setForm({
+      name: p.name, category: p.category,
+      price_usd: String(p.price_usd), stock: String(p.stock),
+      svg_key: p.svg_key ?? "", description: p.description ?? "",
+      socket_type:        String(m.socket_type        ?? ""),
+      form_factor:        String(m.form_factor        ?? ""),
+      ram_generation:     String(m.ram_generation     ?? ""),
+      tdp_watts:          String(m.tdp_watts          ?? ""),
+      wattage_watts:      String(m.wattage_watts      ?? ""),
+      capacity_gb:        String(m.capacity_gb        ?? ""),
+      vram_gb:            String(m.vram_gb            ?? ""),
+      speed_mhz:          String(m.speed_mhz          ?? ""),
+      storage_capacity_gb: String(m.storage_capacity_gb ?? ""),
+      interface_type:     String(m.interface_type     ?? ""),
+      cooler_type:        String(m.cooler_type        ?? ""),
+      tdp_rating:         String(m.tdp_rating         ?? ""),
+    });
+    setEditId(p.id);
+    setShowAdd(false);
+  }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!form.name.trim()) { toast.error("El nombre es obligatorio"); return; }
-    addMutation.mutate(form);
+    if (editId) {
+      editMutation.mutate({ id: editId, form });
+    } else {
+      addMutation.mutate(form);
+    }
   }
 
-  return (
-    <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-6">
+  function cancelForm() {
+    setShowAdd(false); setEditId(null); setForm(EMPTY_FORM);
+  }
 
-      {/* ── Header ─────────────────────────────────────────────────────── */}
-      <div className="glass-card p-5 flex items-center justify-between gap-4 flex-wrap">
+  const filtered = search.trim()
+    ? products.filter((p) =>
+        p.name.toLowerCase().includes(search.toLowerCase()) ||
+        p.category.toLowerCase().includes(search.toLowerCase())
+      )
+    : products;
+
+  const byCategory = filtered.reduce<Record<string, HardwareRow[]>>((acc, p) => {
+    (acc[p.category] ??= []).push(p);
+    return acc;
+  }, {});
+
+  const isFormOpen = showAdd || editId !== null;
+  const isPending  = addMutation.isPending || editMutation.isPending;
+
+  return (
+    <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-5">
+
+      {/* ── Header ──────────────────────────────────────────────────── */}
+      <div className="glass-card p-4 flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-cyan-500/15 border border-cyan-500/25 flex items-center justify-center">
-            <Shield size={20} className="text-cyan-400" />
+          <div className="w-9 h-9 rounded-xl bg-cyan-500/15 border border-cyan-500/25 flex items-center justify-center">
+            <Shield size={18} className="text-cyan-400" />
           </div>
           <div>
-            <h1 className="text-base font-bold text-white">Hardware Admin</h1>
-            <p className="text-xs text-gray-500 font-mono">
-              {products.length} componentes · Tech-Titan Control Panel
+            <h1 className="text-sm font-bold text-white">Hardware Admin</h1>
+            <p className="text-[10px] text-gray-500 font-mono">
+              {products.length} componentes · Tech-Titan
             </p>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <button onClick={() => refetch()} className="btn-ghost py-1.5 text-xs">
-            <RefreshCw size={13} /> Recargar
+            <RefreshCw size={12} /> Recargar
           </button>
           <button
-            onClick={() => setShowAdd((v) => !v)}
+            onClick={() => { cancelForm(); setShowAdd((v) => !v); }}
             className="btn-neon py-1.5 text-xs"
           >
-            {showAdd ? <ChevronUp size={13} /> : <Plus size={13} />}
-            {showAdd ? "Cancelar" : "Añadir componente"}
+            {isFormOpen ? <X size={12} /> : <Plus size={12} />}
+            {isFormOpen ? "Cancelar" : "Añadir"}
           </button>
         </div>
       </div>
 
-      {/* ── Warning: admin endpoints ──────────────────────────────────── */}
+      {/* ── Warning ──────────────────────────────────────────────────── */}
       <div className="flex items-start gap-2 px-4 py-3 rounded-xl border border-amber-500/20 bg-amber-500/5 text-xs text-amber-400">
-        <AlertTriangle size={14} className="mt-0.5 flex-shrink-0" />
+        <AlertTriangle size={13} className="mt-0.5 flex-shrink-0" />
         <span>
-          Las operaciones de escritura (Añadir / Eliminar) requieren los endpoints
-          <code className="mx-1 text-amber-300">/store/admin/hardware</code>
-          en el backend. Si ves errores 404, sigue los pasos de configuración del backend abajo.
+          Requiere el backend Express en <code className="text-amber-300 mx-1">localhost:9000</code>.
+          Para los SVGs, coloca archivos en <code className="text-amber-300 mx-1">public/hardware/&lt;key&gt;.svg</code>.
         </span>
       </div>
 
-      {/* ── Add form ───────────────────────────────────────────────────── */}
+      {/* ── Add / Edit form ──────────────────────────────────────────── */}
       <AnimatePresence>
-        {showAdd && (
+        {isFormOpen && (
           <motion.form
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
@@ -171,103 +446,46 @@ export default function AdminPage() {
             onSubmit={handleSubmit}
             className="glass-card p-5 space-y-4 overflow-hidden"
           >
-            <h2 className="text-xs font-mono text-cyan-400 uppercase tracking-widest">
-              Nuevo Componente
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {/* Nombre */}
-              <div className="sm:col-span-2">
-                <label className="text-[10px] font-mono text-gray-500 uppercase">Nombre *</label>
-                <input
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  placeholder="ej: AMD Ryzen 9 7950X"
-                  className="mt-1 w-full bg-gray-800/50 border border-gray-700/50 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-cyan-500/50"
-                  required
-                />
-              </div>
-              {/* Categoría */}
-              <div>
-                <label className="text-[10px] font-mono text-gray-500 uppercase">Categoría</label>
-                <select
-                  value={form.category}
-                  onChange={(e) => setForm({ ...form, category: e.target.value })}
-                  className="mt-1 w-full bg-gray-800/50 border border-gray-700/50 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500/50"
-                >
-                  {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-                </select>
-              </div>
-              {/* Socket */}
-              <div>
-                <label className="text-[10px] font-mono text-gray-500 uppercase">Socket</label>
-                <select
-                  value={form.socket_type}
-                  onChange={(e) => setForm({ ...form, socket_type: e.target.value })}
-                  className="mt-1 w-full bg-gray-800/50 border border-gray-700/50 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500/50"
-                >
-                  <option value="">— Ninguno —</option>
-                  {["AM4", "AM5", "LGA1700", "LGA1200"].map((s) => <option key={s} value={s}>{s}</option>)}
-                </select>
-              </div>
-              {/* Form Factor */}
-              <div>
-                <label className="text-[10px] font-mono text-gray-500 uppercase">Form Factor</label>
-                <select
-                  value={form.form_factor}
-                  onChange={(e) => setForm({ ...form, form_factor: e.target.value })}
-                  className="mt-1 w-full bg-gray-800/50 border border-gray-700/50 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500/50"
-                >
-                  <option value="">— Ninguno —</option>
-                  {["ATX", "MATX", "ITX"].map((f) => <option key={f} value={f}>{f}</option>)}
-                </select>
-              </div>
-              {/* RAM Gen */}
-              <div>
-                <label className="text-[10px] font-mono text-gray-500 uppercase">RAM Generation</label>
-                <select
-                  value={form.ram_generation}
-                  onChange={(e) => setForm({ ...form, ram_generation: e.target.value })}
-                  className="mt-1 w-full bg-gray-800/50 border border-gray-700/50 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500/50"
-                >
-                  <option value="">— Ninguno —</option>
-                  {["DDR4", "DDR5"].map((r) => <option key={r} value={r}>{r}</option>)}
-                </select>
-              </div>
-              {/* TDP */}
-              <div>
-                <label className="text-[10px] font-mono text-gray-500 uppercase">TDP (Watts)</label>
-                <input
-                  type="number" min="0" max="999"
-                  value={form.tdp_watts}
-                  onChange={(e) => setForm({ ...form, tdp_watts: e.target.value })}
-                  placeholder="ej: 125"
-                  className="mt-1 w-full bg-gray-800/50 border border-gray-700/50 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-cyan-500/50"
-                />
-              </div>
-              {/* Wattage PSU */}
-              <div>
-                <label className="text-[10px] font-mono text-gray-500 uppercase">Wattage PSU (solo PSU)</label>
-                <input
-                  type="number" min="0" max="2000"
-                  value={form.wattage_watts}
-                  onChange={(e) => setForm({ ...form, wattage_watts: e.target.value })}
-                  placeholder="ej: 850"
-                  className="mt-1 w-full bg-gray-800/50 border border-gray-700/50 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-cyan-500/50"
-                />
-              </div>
+            <div className="flex items-center justify-between">
+              <h2 className="text-xs font-mono text-cyan-400 uppercase tracking-widest">
+                {editId ? "✎ Editar componente" : "+ Nuevo componente"}
+              </h2>
+              <button type="button" onClick={cancelForm} className="text-gray-600 hover:text-gray-400">
+                <X size={14} />
+              </button>
             </div>
-            <button
-              type="submit"
-              disabled={addMutation.isPending}
-              className="btn-neon text-xs py-2 w-full justify-center"
-            >
-              {addMutation.isPending ? "Guardando..." : "Guardar componente"}
-            </button>
+
+            <ProductFormFields form={form} setForm={setForm} />
+
+            <div className="flex gap-2 pt-2">
+              <button type="button" onClick={cancelForm} className="btn-ghost text-xs py-2 flex-1 justify-center">
+                Cancelar
+              </button>
+              <button type="submit" disabled={isPending} className="btn-neon text-xs py-2 flex-1 justify-center">
+                {isPending ? "Guardando..." : editId ? "Guardar cambios" : "Crear componente"}
+              </button>
+            </div>
           </motion.form>
         )}
       </AnimatePresence>
 
-      {/* ── Product table ───────────────────────────────────────────────── */}
+      {/* ── Search ───────────────────────────────────────────────────── */}
+      <div className="relative">
+        <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600" />
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Buscar por nombre o categoría..."
+          className="w-full bg-gray-900/60 border border-gray-800/60 rounded-xl pl-8 pr-10 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-cyan-500/30"
+        />
+        {search && (
+          <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-400">
+            <X size={12} />
+          </button>
+        )}
+      </div>
+
+      {/* ── Product table ────────────────────────────────────────────── */}
       {isLoading ? (
         <div className="glass-card p-10 text-center">
           <Database size={32} className="text-gray-700 mx-auto mb-3" />
@@ -277,82 +495,104 @@ export default function AdminPage() {
         <div className="glass-card p-8 text-center border-red-500/20">
           <p className="text-sm text-red-400">Error: {(error as Error).message}</p>
         </div>
+      ) : filtered.length === 0 ? (
+        <div className="glass-card p-8 text-center">
+          <Package size={28} className="text-gray-700 mx-auto mb-2" />
+          <p className="text-sm text-gray-500">{search ? "Sin resultados para tu búsqueda" : "Sin componentes. Añade el primero."}</p>
+        </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-3">
           {CATEGORIES.filter((cat) => byCategory[cat]?.length).map((cat) => (
             <div key={cat} className="glass-card overflow-hidden">
               {/* Category header */}
-              <div className="flex items-center gap-2 px-4 py-2.5 border-b border-gray-800/60 bg-gray-900/40">
-                <HardwareIcon category={cat} size={14} className="text-cyan-400" />
-                <span className="text-xs font-mono text-gray-400 uppercase tracking-widest">{cat}</span>
-                <span className="ml-auto text-[10px] text-gray-600 font-mono">{byCategory[cat]?.length} items</span>
+              <div className="flex items-center gap-2 px-4 py-2 border-b border-gray-800/60 bg-gray-900/30">
+                <HardwareIcon category={cat} size={13} className="text-cyan-400" />
+                <span className="text-[11px] font-mono text-gray-400 uppercase tracking-widest">{cat}</span>
+                <span className="ml-auto text-[10px] text-gray-600 font-mono">{byCategory[cat]?.length} item(s)</span>
               </div>
 
               {/* Rows */}
               {byCategory[cat]?.map((p) => (
-                <div key={p.id} className="flex items-center gap-3 px-4 py-3 border-b border-gray-800/30 last:border-0 hover:bg-gray-800/20 transition-colors">
+                <motion.div
+                  key={p.id}
+                  layout
+                  className={cn(
+                    "flex items-center gap-3 px-4 py-3 border-b border-gray-800/20 last:border-0 transition-colors",
+                    editId === p.id ? "bg-cyan-500/5 border-l-2 border-l-cyan-500/50" : "hover:bg-gray-800/20"
+                  )}
+                >
+                  {/* SVG icon */}
+                  <div className="w-9 h-9 rounded-lg bg-gray-800/60 border border-gray-700/40 flex items-center justify-center flex-shrink-0 p-1.5">
+                    <SvgPreview svgKey={p.svg_key} category={p.category} />
+                  </div>
+
                   {/* Name + specs */}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-white font-medium truncate">{p.name}</p>
-                    <div className="flex flex-wrap gap-1.5 mt-1">
-                      {Object.entries(p.metadata).map(([k, v]) => (
-                        <span key={k} className="badge-gray text-[10px]">
+                    {p.description && (
+                      <p className="text-[10px] text-gray-600 truncate mt-0.5">{p.description}</p>
+                    )}
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {Object.entries(p.metadata).slice(0, 4).map(([k, v]) => (
+                        <span key={k} className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-gray-800/60 text-gray-500 border border-gray-700/30">
                           {k.replace(/_/g, " ")}: {String(v)}
                         </span>
                       ))}
                     </div>
                   </div>
-                  {/* ID */}
-                  <span className="hidden md:block text-[10px] font-mono text-gray-700 flex-shrink-0">
-                    {p.id.slice(0, 8)}…
-                  </span>
-                  {/* Delete */}
-                  {deleteId === p.id ? (
-                    <div className="flex items-center gap-1 flex-shrink-0">
-                      <button
-                        onClick={() => delMutation.mutate(p.id)}
-                        disabled={delMutation.isPending}
-                        className="text-[11px] px-2 py-1 rounded bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30 transition-colors"
-                      >
-                        Confirmar
-                      </button>
-                      <button onClick={() => setDeleteId(null)} className="text-[11px] px-2 py-1 rounded text-gray-500 hover:text-gray-300">
-                        Cancelar
-                      </button>
-                    </div>
-                  ) : (
+
+                  {/* Price */}
+                  <div className="flex-shrink-0 text-right hidden sm:block">
+                    <p className="text-sm font-bold text-cyan-400 flex items-center gap-1 justify-end">
+                      <DollarSign size={10} />{p.price_usd.toLocaleString()}
+                    </p>
+                    <StockBadge stock={p.stock} />
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex items-center gap-1 flex-shrink-0">
                     <button
-                      onClick={() => setDeleteId(p.id)}
-                      className="text-gray-700 hover:text-red-400 transition-colors p-1 flex-shrink-0"
-                      title="Eliminar"
+                      onClick={() => editId === p.id ? cancelForm() : startEdit(p)}
+                      title={editId === p.id ? "Cancelar edición" : "Editar"}
+                      className={cn(
+                        "p-1.5 rounded transition-colors",
+                        editId === p.id
+                          ? "text-cyan-400 bg-cyan-500/10"
+                          : "text-gray-600 hover:text-cyan-400 hover:bg-cyan-500/5"
+                      )}
                     >
-                      <Trash2 size={14} />
+                      <Pencil size={13} />
                     </button>
-                  )}
-                </div>
+
+                    {deleteId === p.id ? (
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => delMutation.mutate(p.id)}
+                          disabled={delMutation.isPending}
+                          className="text-[10px] px-2 py-1 rounded bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30 transition-colors"
+                        >
+                          ¿Eliminar?
+                        </button>
+                        <button onClick={() => setDeleteId(null)} className="text-gray-600 hover:text-gray-400 p-1">
+                          <X size={12} />
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setDeleteId(p.id)}
+                        className="text-gray-700 hover:text-red-400 transition-colors p-1.5 rounded hover:bg-red-500/5"
+                        title="Eliminar"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    )}
+                  </div>
+                </motion.div>
               ))}
             </div>
           ))}
         </div>
       )}
-
-      {/* ── MedusaJS admin link ─────────────────────────────────────────── */}
-      <div className="glass-card p-4 flex items-center justify-between gap-4">
-        <div>
-          <p className="text-xs font-semibold text-white">Panel MedusaJS (Órdenes / Clientes)</p>
-          <p className="text-[10px] text-gray-500 font-mono mt-0.5">
-            Gestión de pedidos, clientes, descuentos y configuración de la tienda
-          </p>
-        </div>
-        <a
-          href="http://localhost:9000/app"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="btn-ghost text-xs py-1.5 flex-shrink-0"
-        >
-          Abrir → localhost:9000/app
-        </a>
-      </div>
     </main>
   );
 }

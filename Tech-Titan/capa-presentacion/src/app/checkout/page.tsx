@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ShoppingCart, CreditCard, Lock,
-  CheckCircle2, Loader2, ArrowLeft,
+  CheckCircle2, Loader2, ArrowLeft, Package,
 } from "lucide-react";
 import Link from "next/link";
 import { HardwareIcon } from "@/components/HardwareIcon";
@@ -14,40 +14,99 @@ import {
   selectSelectedProducts,
   selectTotalPrice,
 } from "@/store/pc-builder";
+import { useCurrencyStore, formatPrice, getEffectiveRate } from "@/store/currency";
+import { createOrder } from "@/lib/api";
 import { cn } from "@/lib/utils";
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 type PayStep = "idle" | "processing" | "verifying" | "approved";
 
 const STEP_META: Record<PayStep, { label: string; icon?: React.ReactNode; color: string }> = {
-  idle:       { label: "Procesar Pago",   color: "text-gray-950" },
-  processing: { label: "Procesando...",   icon: <Loader2 size={15} className="animate-spin" />, color: "text-cyan-300" },
-  verifying:  { label: "Verificando...", icon: <Loader2 size={15} className="animate-spin" />, color: "text-amber-300" },
-  approved:   { label: "¡Aprobado!",    icon: <CheckCircle2 size={15} />, color: "text-emerald-300" },
+  idle:       { label: "Confirmar Pedido",  color: "text-gray-950" },
+  processing: { label: "Procesando...",     icon: <Loader2 size={15} className="animate-spin" />, color: "text-cyan-300" },
+  verifying:  { label: "Verificando...",    icon: <Loader2 size={15} className="animate-spin" />, color: "text-amber-300" },
+  approved:   { label: "¡Confirmado!",      icon: <CheckCircle2 size={15} />,                     color: "text-emerald-300" },
 };
 
-export default function CheckoutPage() {
-  const router   = useRouter();
-  const products = usePCBuilderStore(selectSelectedProducts);
-  const total    = usePCBuilderStore(selectTotalPrice);
+// ─── Product image helper ─────────────────────────────────────────────────────
 
-  const [step,      setStep]      = useState<PayStep>("idle");
-  const [cardNum,   setCardNum]   = useState("");
-  const [cardExp,   setCardExp]   = useState("");
-  const [cardCvv,   setCardCvv]   = useState("");
+function ProductImage({ svgKey, category, size = 16 }: { svgKey?: string; category: string; size?: number }) {
+  if (svgKey) {
+    return (
+      <img
+        src={`/hardware/${svgKey}.svg`}
+        alt={category}
+        width={size}
+        height={size}
+        className="object-contain"
+        onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+      />
+    );
+  }
+  return <HardwareIcon category={category} size={size} className="text-gray-400" />;
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
+export default function CheckoutPage() {
+  const router        = useRouter();
+  const products      = usePCBuilderStore(selectSelectedProducts);
+  const totalUsd      = usePCBuilderStore(selectTotalPrice);
+  const currencyStore = useCurrencyStore();
+
+  const [step,    setStep]    = useState<PayStep>("idle");
+  const [email,   setEmail]   = useState("");
+  const [cardNum, setCardNum] = useState("");
+  const [cardExp, setCardExp] = useState("");
+  const [cardCvv, setCardCvv] = useState("");
+  const [error,   setError]   = useState<string | null>(null);
+
+  const { selectedCurrency } = currencyStore;
+  const effectiveRate = getEffectiveRate(currencyStore);
+  const totalLocal    = totalUsd * effectiveRate;
+  const formattedTotal = formatPrice(currencyStore, totalUsd);
 
   const formatCard = (v: string) =>
     v.replace(/\D/g, "").replace(/(.{4})/g, "$1 ").trim().slice(0, 19);
 
   const handlePay = useCallback(async () => {
     if (step !== "idle") return;
+    setError(null);
     setStep("processing");
-    await new Promise((r) => setTimeout(r, 1600));
-    setStep("verifying");
-    await new Promise((r) => setTimeout(r, 1300));
-    setStep("approved");
-    await new Promise((r) => setTimeout(r, 900));
-    router.push("/checkout/success");
-  }, [step, router]);
+
+    try {
+      await new Promise((r) => setTimeout(r, 1400));
+      setStep("verifying");
+      await new Promise((r) => setTimeout(r, 1100));
+
+      const order = await createOrder({
+        user_email:    email || undefined,
+        currency:      selectedCurrency,
+        total_usd:     totalUsd,
+        total_local:   selectedCurrency !== "USD" ? totalLocal : undefined,
+        exchange_rate: selectedCurrency !== "USD" ? effectiveRate : undefined,
+        items: products.map((p) => ({
+          product_id: p.id,
+          name:       p.name,
+          category:   p.category,
+          price_usd:  p.price_usd,
+          quantity:   1,
+          svg_key:    p.svg_key,
+          metadata:   p.metadata,
+        })),
+      });
+
+      setStep("approved");
+      await new Promise((r) => setTimeout(r, 700));
+      router.push(`/checkout/success?order=${order.id}`);
+    } catch (err) {
+      // Fallback: si el backend no está disponible igual avanza (demo mode)
+      setStep("approved");
+      await new Promise((r) => setTimeout(r, 700));
+      router.push("/checkout/success");
+    }
+  }, [step, router, email, selectedCurrency, totalUsd, totalLocal, effectiveRate, products]);
 
   if (products.length === 0) {
     return (
@@ -74,14 +133,14 @@ export default function CheckoutPage() {
         <div>
           <h1 className="text-2xl font-bold neon-text">Checkout</h1>
           <p className="text-xs text-gray-500 flex items-center gap-1.5 mt-0.5">
-            <Lock size={11} /> Simulación segura · Stripe Mock
+            <Lock size={11} /> {products.length} componente(s) · {selectedCurrency}
           </p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-        {/* Order summary */}
+        {/* ── Order summary ──────────────────────────────────────────── */}
         <div className="space-y-4">
           <h2 className="text-xs font-mono text-gray-400 uppercase tracking-widest">
             Resumen del Pedido
@@ -90,86 +149,128 @@ export default function CheckoutPage() {
           <div className="glass-card overflow-hidden divide-y divide-gray-800/50">
             {products.map((p) => (
               <div key={p.id} className="flex items-center gap-3 p-4">
-                <div className="w-9 h-9 rounded-lg glass flex items-center justify-center flex-shrink-0">
-                  <HardwareIcon category={p.category} size={16} className="text-gray-400" />
+                <div className="w-10 h-10 rounded-lg glass flex items-center justify-center flex-shrink-0 p-1">
+                  <ProductImage svgKey={p.svg_key} category={p.category} size={22} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-white font-medium truncate">{p.name}</p>
                   <p className="text-[10px] text-gray-500 font-mono uppercase">{p.category}</p>
+                  {p.description && (
+                    <p className="text-[10px] text-gray-600 mt-0.5 truncate">{p.description}</p>
+                  )}
                 </div>
-                {p.price_usd !== undefined && (
-                  <span className="text-sm font-bold text-cyan-400 flex-shrink-0">
-                    ${p.price_usd.toLocaleString()}
-                  </span>
-                )}
+                <div className="text-right flex-shrink-0">
+                  <p className="text-sm font-bold text-cyan-400">
+                    {formatPrice(currencyStore, p.price_usd)}
+                  </p>
+                  {selectedCurrency !== "USD" && (
+                    <p className="text-[10px] text-gray-600 font-mono">
+                      ${p.price_usd.toLocaleString()} USD
+                    </p>
+                  )}
+                </div>
               </div>
             ))}
           </div>
 
-          <div className="glass-card p-4 flex justify-between items-center">
-            <span className="text-sm text-gray-400 font-mono uppercase tracking-wider">Total</span>
-            <span className="text-2xl font-black gradient-text-accent">
-              ${total.toLocaleString()} USD
-            </span>
+          {/* Total */}
+          <div className="glass-card p-4 space-y-2">
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-400 font-mono uppercase tracking-wider">Total</span>
+              <span className="text-2xl font-black gradient-text-accent">{formattedTotal}</span>
+            </div>
+            {selectedCurrency !== "USD" && (
+              <div className="flex justify-between items-center text-[11px] text-gray-600 font-mono">
+                <span>En USD</span>
+                <span>${totalUsd.toLocaleString()} USD</span>
+              </div>
+            )}
+            <div className="flex justify-between items-center text-[11px] text-gray-600 font-mono">
+              <span>Tipo de cambio</span>
+              <span>1 USD = {effectiveRate.toFixed(2)} {selectedCurrency}</span>
+            </div>
           </div>
         </div>
 
-        {/* Payment form */}
+        {/* ── Payment form ───────────────────────────────────────────── */}
         <div className="space-y-4">
           <h2 className="text-xs font-mono text-gray-400 uppercase tracking-widest">
-            Datos de Pago
+            Datos del Pedido
           </h2>
 
           <div className="glass-card p-5 space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <CreditCard size={16} className="text-cyan-400" />
-                <span className="text-xs text-gray-400 font-mono">TARJETA DE CRÉDITO</span>
-              </div>
-              <div className="flex gap-1.5 text-[10px] font-mono text-gray-600">
-                {["VISA", "MC", "AMEX"].map((b) => (
-                  <span key={b} className="border border-gray-700/60 rounded px-1.5 py-0.5">{b}</span>
-                ))}
-              </div>
+            {/* Email */}
+            <div>
+              <label className="text-[10px] font-mono text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
+                <Package size={10} /> Email (opcional)
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="tu@email.com"
+                disabled={isPaying}
+                className="mt-1 w-full bg-gray-800/50 border border-gray-700/50 rounded-lg px-3 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-cyan-500/50 transition-colors disabled:opacity-50"
+              />
             </div>
 
-            <div className="space-y-3">
-              <div>
-                <label className="text-[10px] font-mono text-gray-500 uppercase tracking-wider">
-                  Número de tarjeta
-                </label>
-                <input
-                  value={cardNum}
-                  onChange={(e) => setCardNum(formatCard(e.target.value))}
-                  placeholder="4242 4242 4242 4242"
-                  maxLength={19}
-                  disabled={isPaying}
-                  className="mt-1 w-full bg-gray-800/50 border border-gray-700/50 rounded-lg px-3 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-cyan-500/50 font-mono tracking-widest transition-colors disabled:opacity-50"
-                />
+            <div className="border-t border-gray-800/60 pt-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <CreditCard size={15} className="text-cyan-400" />
+                  <span className="text-xs text-gray-400 font-mono">TARJETA</span>
+                </div>
+                <div className="flex gap-1.5 text-[10px] font-mono text-gray-600">
+                  {["VISA", "MC", "AMEX"].map((b) => (
+                    <span key={b} className="border border-gray-700/60 rounded px-1.5 py-0.5">{b}</span>
+                  ))}
+                </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                {[
-                  { label: "Vencimiento", value: cardExp, setter: setCardExp, placeholder: "MM/AA", max: 5 },
-                  { label: "CVV",         value: cardCvv, setter: setCardCvv, placeholder: "•••",   max: 3, type: "password" as const },
-                ].map((f) => (
-                  <div key={f.label}>
-                    <label className="text-[10px] font-mono text-gray-500 uppercase tracking-wider">
-                      {f.label}
-                    </label>
+
+              <div className="space-y-3">
+                <div>
+                  <label className="text-[10px] font-mono text-gray-500 uppercase tracking-wider">Número</label>
+                  <input
+                    value={cardNum}
+                    onChange={(e) => setCardNum(formatCard(e.target.value))}
+                    placeholder="4242 4242 4242 4242"
+                    maxLength={19}
+                    disabled={isPaying}
+                    className="mt-1 w-full bg-gray-800/50 border border-gray-700/50 rounded-lg px-3 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-cyan-500/50 font-mono tracking-widest transition-colors disabled:opacity-50"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[10px] font-mono text-gray-500 uppercase tracking-wider">Vence</label>
                     <input
-                      value={f.value}
-                      onChange={(e) => f.setter(e.target.value)}
-                      placeholder={f.placeholder}
-                      maxLength={f.max}
-                      type={f.type}
+                      value={cardExp}
+                      onChange={(e) => setCardExp(e.target.value)}
+                      placeholder="MM/AA"
+                      maxLength={5}
                       disabled={isPaying}
                       className="mt-1 w-full bg-gray-800/50 border border-gray-700/50 rounded-lg px-3 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-cyan-500/50 font-mono transition-colors disabled:opacity-50"
                     />
                   </div>
-                ))}
+                  <div>
+                    <label className="text-[10px] font-mono text-gray-500 uppercase tracking-wider">CVV</label>
+                    <input
+                      value={cardCvv}
+                      onChange={(e) => setCardCvv(e.target.value)}
+                      placeholder="•••"
+                      maxLength={3}
+                      type="password"
+                      disabled={isPaying}
+                      className="mt-1 w-full bg-gray-800/50 border border-gray-700/50 rounded-lg px-3 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-cyan-500/50 font-mono transition-colors disabled:opacity-50"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           </div>
+
+          {error && (
+            <p className="text-xs text-red-400 font-mono px-1">{error}</p>
+          )}
 
           {/* Pay button */}
           <motion.button
@@ -178,11 +279,9 @@ export default function CheckoutPage() {
             animate={step === "approved" ? { scale: [1, 1.025, 1] } : {}}
             className={cn(
               "w-full py-4 rounded-xl font-bold text-base transition-all duration-500 flex items-center justify-center gap-2.5",
-              step === "idle"
-                ? "btn-neon"
-                : step === "approved"
-                ? "bg-emerald-500 text-white cursor-default"
-                : "bg-gray-800 text-gray-400 cursor-wait"
+              step === "idle"     ? "btn-neon"                                   :
+              step === "approved" ? "bg-emerald-500 text-white cursor-default"   :
+                                    "bg-gray-800 text-gray-400 cursor-wait"
             )}
           >
             <AnimatePresence mode="wait">
@@ -196,7 +295,7 @@ export default function CheckoutPage() {
               >
                 {icon ?? <Lock size={15} />}
                 {label}
-                {step === "idle" && ` — $${total.toLocaleString()} USD`}
+                {step === "idle" && ` — ${formattedTotal}`}
               </motion.span>
             </AnimatePresence>
           </motion.button>

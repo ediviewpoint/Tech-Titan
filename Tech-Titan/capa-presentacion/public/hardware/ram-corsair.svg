@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80">
+  <!-- Background -->
+  <rect width="80" height="80" fill="#0d1117" rx="8"/>
+  <!-- RAM stick body -->
+  <rect x="22" y="14" width="36" height="46" rx="2" fill="#0a1a1a" stroke="#06b6d4" stroke-width="1.5"/>
+  <!-- Corsair heatspreader top fin shape -->
+  <polygon points="22,14 30,8 50,8 58,14" fill="#0f1f1f" stroke="#06b6d4" stroke-width="1"/>
+  <!-- PCB notch at bottom -->
+  <rect x="22" y="55" width="13" height="5" rx="0" fill="#0d1117"/>
+  <rect x="45" y="55" width="13" height="5" rx="0" fill="#0d1117"/>
+  <!-- Gold pins at bottom -->
+  <line x1="25" y1="58" x2="25" y2="65" stroke="#f59e0b" stroke-width="1.5"/>
+  <line x1="28" y1="58" x2="28" y2="65" stroke="#f59e0b" stroke-width="1.5"/>
+  <line x1="31" y1="58" x2="31" y2="65" stroke="#f59e0b" stroke-width="1.5"/>
+  <line x1="34" y1="58" x2="34" y2="65" stroke="#f59e0b" stroke-width="1.5"/>
+  <line x1="46" y1="58" x2="46" y2="65" stroke="#f59e0b" stroke-width="1.5"/>
+  <line x1="49" y1="58" x2="49" y2="65" stroke="#f59e0b" stroke-width="1.5"/>
+  <line x1="52" y1="58" x2="52" y2="65" stroke="#f59e0b" stroke-width="1.5"/>
+  <line x1="55" y1="58" x2="55" y2="65" stroke="#f59e0b" stroke-width="1.5"/>
+  <!-- Heatspreader panels -->
+  <rect x="24" y="16" width="14" height="36" rx="1" fill="none" stroke="#06b6d4" stroke-width="0.8" opacity="0.5"/>
+  <rect x="42" y="16" width="14" height="36" rx="1" fill="none" stroke="#06b6d4" stroke-width="0.8" opacity="0.5"/>
+  <!-- RGB bar -->
+  <line x1="22" y1="18" x2="58" y2="18" stroke="#06b6d4" stroke-width="2" opacity="0.7"/>
+  <!-- CORSAIR label -->
+  <text x="40" y="39" font-family="monospace" font-size="4" font-weight="bold" fill="#06b6d4" text-anchor="middle">CORSAIR</text>
+  <text x="40" y="48" font-family="monospace" font-size="4" fill="#06b6d4" text-anchor="middle" opacity="0.6">DDR5</text>
+</svg>

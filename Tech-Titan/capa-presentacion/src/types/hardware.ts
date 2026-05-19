@@ -69,11 +69,38 @@ export interface HardwareMetadata {
 
 // ─── Product (from API) ───────────────────────────────────────────────────────
 export interface HardwareProduct {
-  id:        string;
-  name:      string;
-  category:  ComponentCategory;
-  price_usd: number;
-  metadata:  HardwareMetadata;
+  id:           string;
+  name:         string;
+  category:     ComponentCategory;
+  price_usd:    number;
+  metadata:     HardwareMetadata;
+  svg_key?:     string;
+  stock:        number;
+  description?: string;
+}
+
+// ─── Order ────────────────────────────────────────────────────────────────────
+export interface OrderItem {
+  product_id?: string;
+  name:        string;
+  category:    string;
+  price_usd:   number;
+  quantity:    number;
+  svg_key?:    string;
+  metadata?:   HardwareMetadata;
+}
+
+export interface Order {
+  id:            string;
+  user_email?:   string;
+  status:        "pending" | "confirmed" | "shipped" | "delivered" | "cancelled";
+  currency:      CurrencyCode;
+  total_usd:     number;
+  total_local?:  number;
+  exchange_rate?: number;
+  notes?:        string;
+  items:         OrderItem[];
+  created_at:    string;
 }
 
 // ─── Validation ───────────────────────────────────────────────────────────────

@@ -1,5 +1,5 @@
 import { ProductsResponseSchema, ValidationResultSchema, ExchangeRatesResponseSchema } from "./schemas";
-import type { HardwareProduct, ValidationResult, ExchangeRate } from "@/types/hardware";
+import type { HardwareProduct, ValidationResult, ExchangeRate, Order, OrderItem } from "@/types/hardware";
 
 // Next.js rewrite: /api/backend/* → http://localhost:9000/*
 const BACKEND = "/api/backend";
@@ -88,6 +88,45 @@ export async function fetchCurrencies(): Promise<ExchangeRate[]> {
     return [];
   }
 }
+
+// ─── Orders ───────────────────────────────────────────────────────────────────
+
+export interface CreateOrderPayload {
+  user_email?:   string;
+  currency:      string;
+  total_usd:     number;
+  total_local?:  number;
+  exchange_rate?: number;
+  notes?:        string;
+  items:         OrderItem[];
+}
+
+export async function createOrder(payload: CreateOrderPayload): Promise<Order> {
+  const res = await fetch(`${BACKEND}/store/orders`, {
+    method:  "POST",
+    headers: { "Content-Type": "application/json" },
+    body:    JSON.stringify(payload),
+    cache:   "no-store",
+  });
+
+  if (!res.ok) {
+    const body = await parseJson<{ error?: string }>(res);
+    throw new Error(body.error ?? `Error ${res.status} al crear orden`);
+  }
+
+  return parseJson<Order>(res);
+}
+
+export async function fetchOrder(id: string): Promise<Order> {
+  const res = await fetch(`${BACKEND}/store/orders/${id}`, { cache: "no-store" });
+  if (!res.ok) {
+    const body = await parseJson<{ error?: string }>(res);
+    throw new Error(body.error ?? `Error ${res.status} al obtener orden`);
+  }
+  return parseJson<Order>(res);
+}
+
+// ─── Currencies ───────────────────────────────────────────────────────────────
 
 export async function updateExchangeRate(
   code: string,

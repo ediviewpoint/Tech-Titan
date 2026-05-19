@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80">
+  <!-- Background -->
+  <rect width="80" height="80" fill="#0d1117" rx="8"/>
+  <!-- M.2 NVMe stick - horizontal orientation -->
+  <rect x="8" y="32" width="64" height="16" rx="2" fill="#0a1a18" stroke="#14b8a6" stroke-width="1.5"/>
+  <!-- M.2 key notch (connector end) -->
+  <rect x="58" y="35" width="14" height="10" rx="1" fill="#061210" stroke="#14b8a6" stroke-width="1"/>
+  <!-- M.2 key pins -->
+  <line x1="59" y1="36" x2="59" y2="44" stroke="#f59e0b" stroke-width="1"/>
+  <line x1="61" y1="36" x2="61" y2="44" stroke="#f59e0b" stroke-width="1"/>
+  <line x1="63" y1="36" x2="63" y2="44" stroke="#f59e0b" stroke-width="1"/>
+  <line x1="65" y1="36" x2="65" y2="44" stroke="#f59e0b" stroke-width="1"/>
+  <line x1="67" y1="36" x2="67" y2="44" stroke="#f59e0b" stroke-width="1"/>
+  <line x1="69" y1="36" x2="69" y2="44" stroke="#f59e0b" stroke-width="1"/>
+  <!-- NAND chips on the stick -->
+  <rect x="10" y="34" width="12" height="12" rx="1" fill="#0d2820" stroke="#14b8a6" stroke-width="0.8"/>
+  <rect x="25" y="34" width="12" height="12" rx="1" fill="#0d2820" stroke="#14b8a6" stroke-width="0.8"/>
+  <rect x="40" y="34" width="12" height="12" rx="1" fill="#0d2820" stroke="#14b8a6" stroke-width="0.8"/>
+  <!-- Controller chip dot -->
+  <circle cx="16" cy="40" r="2" fill="#14b8a6" opacity="0.4"/>
+  <circle cx="31" cy="40" r="2" fill="#14b8a6" opacity="0.4"/>
+  <circle cx="46" cy="40" r="2" fill="#14b8a6" opacity="0.4"/>
+  <!-- Label -->
+  <text x="34" y="26" font-family="monospace" font-size="5" font-weight="bold" fill="#14b8a6" text-anchor="middle">NVMe M.2</text>
+  <!-- Speed indicator -->
+  <text x="34" y="59" font-family="monospace" font-size="4" fill="#14b8a6" text-anchor="middle" opacity="0.6">PCIe 4.0</text>
+  <!-- Mounting hole -->
+  <circle cx="12" cy="40" r="1.5" fill="none" stroke="#14b8a6" stroke-width="0.6" opacity="0.5"/>
+</svg>
