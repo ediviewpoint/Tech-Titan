@@ -43,4 +43,4 @@ HEALTHCHECK \
   --retries=3     \
   CMD wget -qO- http://localhost:9000/health || exit 1
 
-CMD ["node", "dist/server.js"]
+CMD ["sh", "-c", "node dist/scripts/migrate.js up && node dist/server.js"]
