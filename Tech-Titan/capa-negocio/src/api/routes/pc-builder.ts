@@ -11,10 +11,11 @@ const router = Router();
 // ─── Shared types ─────────────────────────────────────────────────────────────
 
 interface HardwareComponentRow {
-  id:       string;
-  name:     string;
-  category: string;
-  metadata: HardwareMetadata;
+  id:        string;
+  name:      string;
+  category:  string;
+  price_usd: string;
+  metadata:  HardwareMetadata;
 }
 
 function isComponentCategory(value: string): value is ComponentCategory {
@@ -23,14 +24,27 @@ function isComponentCategory(value: string): value is ComponentCategory {
 
 function mapRowToCartItem(row: HardwareComponentRow): CartItem {
   if (!isComponentCategory(row.category)) {
-    throw new Error(
-      `Categoría desconocida: "${row.category}" para el componente "${row.name}"`
-    );
+    throw new Error(`Categoría desconocida: "${row.category}" en "${row.name}"`);
   }
-  return { product_id: row.id, name: row.name, category: row.category, metadata: row.metadata };
+  return {
+    product_id: row.id,
+    name:       row.name,
+    category:   row.category,
+    metadata:   row.metadata,
+  };
 }
 
-// ─── GET /store/pc-builder/products ──────────────────────────────────────────
+function mapRowToProduct(row: HardwareComponentRow) {
+  return {
+    id:        row.id,
+    name:      row.name,
+    category:  row.category,
+    price_usd: parseFloat(row.price_usd),
+    metadata:  row.metadata,
+  };
+}
+
+// ─── GET /store/pc-builder/products?category=CPU ─────────────────────────────
 
 router.get("/products", async (req: Request, res: Response): Promise<void> => {
   const rawCategory = req.query["category"];
@@ -39,26 +53,23 @@ router.get("/products", async (req: Request, res: Response): Promise<void> => {
   try {
     const result: QueryResult<HardwareComponentRow> = category
       ? await pool.query(
-          "SELECT id, name, category, metadata FROM hardware_components WHERE category = $1 ORDER BY name",
+          "SELECT id, name, category, price_usd, metadata FROM hardware_components WHERE category = $1 ORDER BY price_usd",
           [category]
         )
       : await pool.query(
-          "SELECT id, name, category, metadata FROM hardware_components ORDER BY category, name"
+          "SELECT id, name, category, price_usd, metadata FROM hardware_components ORDER BY category, price_usd"
         );
 
-    logger.info(`GET /products → ${result.rowCount} componentes (filtro: ${category ?? "ninguno"})`);
-    res.status(200).json({ products: result.rows });
+    logger.info(`GET /products → ${result.rowCount} (filtro: ${category ?? "todos"})`);
+    res.status(200).json({ products: result.rows.map(mapRowToProduct) });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Error interno.";
-    logger.error(`GET /products falló: ${message}`, err instanceof Error ? err : undefined);
+    logger.error(`GET /products falló: ${message}`);
     res.status(500).json({ error: message });
   }
 });
 
 // ─── POST /store/pc-builder/validate ─────────────────────────────────────────
-// El middleware validateProductIds aplica Zod antes de que llegue este handler.
-// Si el cuerpo no pasa la validación, el middleware responde 400 y next() nunca
-// se llama — este handler solo ve datos garantizados como válidos.
 
 router.post(
   "/validate",
@@ -68,7 +79,7 @@ router.post(
 
     try {
       const result: QueryResult<HardwareComponentRow> = await pool.query(
-        "SELECT id, name, category, metadata FROM hardware_components WHERE id = ANY($1::uuid[])",
+        "SELECT id, name, category, price_usd, metadata FROM hardware_components WHERE id = ANY($1::uuid[])",
         [product_ids]
       );
 
@@ -76,39 +87,32 @@ router.post(
       const missingIds = product_ids.filter((id) => !foundIds.has(id));
 
       if (missingIds.length > 0) {
-        logger.warn(`POST /validate → productos no encontrados: [${missingIds.join(", ")}]`);
-        res.status(404).json({
-          error: `Productos no encontrados: ${missingIds.join(", ")}`,
-        });
+        res.status(404).json({ error: `Productos no encontrados: ${missingIds.join(", ")}` });
         return;
       }
 
-      const items:      CartItem[]  = result.rows.map(mapRowToCartItem);
-      const validation              = validatePCBuild(items);
+      const items:      CartItem[]       = result.rows.map(mapRowToCartItem);
+      const validation                   = validatePCBuild(items);
 
-      // ── Observabilidad: registrar fallos críticos de compatibilidad ───────
       if (validation.errors.length > 0) {
         logger.warn(
-          `POST /validate → incompatibilidad detectada en [${items.map((i) => i.name).join(", ")}]: ` +
+          `POST /validate → incompatibilidad en [${items.map((i) => i.name).join(", ")}]: ` +
           validation.errors.join(" | ")
         );
       } else {
-        logger.info(
-          `POST /validate → build compatible: [${items.map((i) => i.name).join(", ")}]`
-        );
+        logger.info(`POST /validate → build compatible: [${items.map((i) => i.name).join(", ")}]`);
       }
 
       res.status(200).json(validation);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Error interno del servidor.";
-      logger.error(`POST /validate → excepción inesperada: ${message}`, err instanceof Error ? err : undefined);
+      const message = err instanceof Error ? err.message : "Error interno.";
+      logger.error(`POST /validate → excepción: ${message}`);
       res.status(500).json({ error: message });
     }
   }
 );
 
 // ─── GET /store/pc-builder/build?ids=uuid1,uuid2,... ─────────────────────────
-// Devuelve múltiples productos por ID. Usado por la hydration de URL del frontend.
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -116,7 +120,7 @@ router.get("/build", async (req: Request, res: Response): Promise<void> => {
   const rawIds = req.query["ids"];
 
   if (typeof rawIds !== "string" || !rawIds.trim()) {
-    res.status(400).json({ error: "El parámetro 'ids' es obligatorio (UUIDs separados por coma)." });
+    res.status(400).json({ error: "El parámetro 'ids' es obligatorio." });
     return;
   }
 
@@ -135,12 +139,12 @@ router.get("/build", async (req: Request, res: Response): Promise<void> => {
 
   try {
     const result: QueryResult<HardwareComponentRow> = await pool.query(
-      "SELECT id, name, category, metadata FROM hardware_components WHERE id = ANY($1::uuid[]) ORDER BY category",
+      "SELECT id, name, category, price_usd, metadata FROM hardware_components WHERE id = ANY($1::uuid[]) ORDER BY category",
       [ids]
     );
 
     logger.info(`GET /build → ${result.rowCount} productos por ID`);
-    res.status(200).json({ products: result.rows });
+    res.status(200).json({ products: result.rows.map(mapRowToProduct) });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Error interno.";
     logger.error(`GET /build falló: ${message}`);

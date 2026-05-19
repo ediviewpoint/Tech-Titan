@@ -18,6 +18,7 @@ import { fetchProducts, validateBuild, fetchProductsByIds } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import type { HardwareProduct } from "@/types/hardware";
 import { ComponentCategory } from "@/types/hardware";
+import { useCurrencyStore, formatPrice } from "@/store/currency";
 import {
   usePCBuilderStore,
   selectSelectedProducts,
@@ -28,15 +29,28 @@ import type { PCBuilderState } from "@/store/pc-builder";
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const BUILD_STEPS: readonly BuildStep[] = [
-  { index: 0, label: "CPU",         description: "Elige tu procesador"  },
-  { index: 1, label: "Placa Madre", description: "Elige tu placa base"  },
-  { index: 2, label: "RAM",         description: "Elige tu memoria RAM" },
+  { index: 0, label: "CPU",         description: "Procesador"            },
+  { index: 1, label: "Placa Madre", description: "Placa base"            },
+  { index: 2, label: "RAM",         description: "Memoria RAM"           },
+  { index: 3, label: "GPU",         description: "Tarjeta gráfica"       },
+  { index: 4, label: "PSU",         description: "Fuente de poder"       },
+  { index: 5, label: "Storage",     description: "Almacenamiento"        },
+  { index: 6, label: "Gabinete",    description: "Case / Gabinete"       },
+  { index: 7, label: "Cooler",      description: "Refrigeración"         },
 ] as const;
+
+// Los primeros 6 pasos son requeridos para BUILD COMPLETE
+const REQUIRED_STEPS = 6;
 
 const STEP_CATEGORIES: Record<number, ComponentCategory> = {
   0: ComponentCategory.CPU,
   1: ComponentCategory.MOTHERBOARD,
   2: ComponentCategory.RAM,
+  3: ComponentCategory.GPU,
+  4: ComponentCategory.PSU,
+  5: ComponentCategory.STORAGE,
+  6: ComponentCategory.CASE,
+  7: ComponentCategory.COOLER,
 };
 
 // ─── Hydration wrapper ────────────────────────────────────────────────────────
@@ -126,7 +140,8 @@ function PCBuilderDashboard() {
     }
   }, [validation]);
 
-  const category   = STEP_CATEGORIES[currentStep] ?? ComponentCategory.CPU;
+  const currencyStore = useCurrencyStore();
+  const category    = STEP_CATEGORIES[currentStep] ?? ComponentCategory.CPU;
   const selectedIds = selectedList.map((p) => p.id);
   const totalTdp    = selectedList.reduce((sum, p) => sum + (p.metadata.tdp_watts ?? 0), 0);
 
@@ -166,8 +181,11 @@ function PCBuilderDashboard() {
     BUILD_STEPS.filter((s) => selected[STEP_CATEGORIES[s.index]!] !== undefined).map((s) => s.index)
   );
 
-  const completedCount = completedSteps.size;
-  const allSelected    = completedCount === BUILD_STEPS.length;
+  const completedCount    = completedSteps.size;
+  const requiredCompleted = BUILD_STEPS.slice(0, REQUIRED_STEPS).filter((s) => selected[STEP_CATEGORIES[s.index]!] !== undefined).length;
+  const allSelected       = requiredCompleted === REQUIRED_STEPS;
+
+  const totalPriceFormatted = formatPrice(currencyStore, totalPrice);
 
   // ─── Render ───────────────────────────────────────────────────────────────
   return (
@@ -191,7 +209,7 @@ function PCBuilderDashboard() {
                 ? "text-emerald-400 border-emerald-500/30 bg-emerald-500/10"
                 : "text-cyan-400 border-cyan-500/30 bg-cyan-500/10"
             )}>
-              {allSelected ? "BUILD COMPLETE" : `BUILDING ${completedCount}/${BUILD_STEPS.length}`}
+              {allSelected ? "BUILD COMPLETE" : `BUILDING ${requiredCompleted}/${REQUIRED_STEPS}`}
             </span>
           </div>
 
@@ -202,7 +220,7 @@ function PCBuilderDashboard() {
               <div className="w-24 h-1.5 bg-gray-800 rounded-full overflow-hidden">
                 <motion.div
                   className="h-full rounded-full"
-                  animate={{ width: `${(completedCount / BUILD_STEPS.length) * 100}%` }}
+                  animate={{ width: `${(requiredCompleted / REQUIRED_STEPS) * 100}%` }}
                   transition={{ duration: 0.5, ease: "easeOut" }}
                   style={{
                     background: allSelected
@@ -212,7 +230,7 @@ function PCBuilderDashboard() {
                 />
               </div>
               <span className="text-xs font-mono text-gray-500">
-                {Math.round((completedCount / BUILD_STEPS.length) * 100)}%
+                {Math.round((requiredCompleted / REQUIRED_STEPS) * 100)}%
               </span>
             </div>
 

@@ -1,28 +1,8 @@
-import {
-  ProductsResponseSchema,
-  ValidationResultSchema,
-} from "./schemas";
-import type { HardwareProduct, ValidationResult } from "@/types/hardware";
+import { ProductsResponseSchema, ValidationResultSchema, ExchangeRatesResponseSchema } from "./schemas";
+import type { HardwareProduct, ValidationResult, ExchangeRate } from "@/types/hardware";
 
-// Next.js rewrites /api/backend/* → http://localhost:9000/*  (ver next.config.js)
+// Next.js rewrite: /api/backend/* → http://localhost:9000/*
 const BACKEND = "/api/backend";
-
-const MOCK_PRICES: Record<string, number> = {
-  // CPUs
-  "AMD Ryzen 7 7800X3D":                  449,
-  "Intel Core i9-13900K":                 559,
-  // Motherboards
-  "MSI MAG B650 TOMAHAWK":                199,
-  "ASUS ROG STRIX Z790-E":                429,
-  // RAM
-  "G.Skill Flare X5 32GB DDR5-6000":      129,
-  "Kingston Fury Beast 32GB DDR5-5200":   109,
-  "Corsair Vengeance LPX 32GB DDR4-3200":  69,
-  // GPU
-  "NVIDIA GeForce RTX 4070 Super":        599,
-  // PSU
-  "Corsair RM850x 850W 80+ Gold":         149,
-};
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -31,11 +11,11 @@ async function parseJson<T>(res: Response): Promise<T> {
   try {
     return JSON.parse(text) as T;
   } catch {
-    throw new Error(`Respuesta no-JSON del servidor (${res.status}): ${text.slice(0, 80)}`);
+    throw new Error(`Respuesta no-JSON del servidor (${res.status}): ${text.slice(0, 100)}`);
   }
 }
 
-// ─── Endpoints ────────────────────────────────────────────────────────────────
+// ─── Products ─────────────────────────────────────────────────────────────────
 
 export async function fetchProducts(category: string): Promise<HardwareProduct[]> {
   const url = `${BACKEND}/store/pc-builder/products?category=${encodeURIComponent(category)}`;
@@ -46,19 +26,13 @@ export async function fetchProducts(category: string): Promise<HardwareProduct[]
     throw new Error(body.error ?? `Error ${res.status} al obtener productos`);
   }
 
-  const raw = await parseJson<unknown>(res);
-
-  // ── Zod: no renderizar si el contrato no se cumple ────────────────────
+  const raw    = await parseJson<unknown>(res);
   const parsed = ProductsResponseSchema.safeParse(raw);
   if (!parsed.success) {
-    const details = JSON.stringify(parsed.error.flatten().fieldErrors, null, 2);
-    throw new Error(`Contrato de API violado en /products:\n${details}`);
+    throw new Error(`Contrato de API violado:\n${JSON.stringify(parsed.error.flatten().fieldErrors, null, 2)}`);
   }
 
-  return parsed.data.products.map((p) => ({
-    ...p,
-    price: MOCK_PRICES[p.name],
-  }));
+  return parsed.data.products;
 }
 
 export async function fetchProductsByIds(ids: string[]): Promise<HardwareProduct[]> {
@@ -75,8 +49,10 @@ export async function fetchProductsByIds(ids: string[]): Promise<HardwareProduct
   const parsed = ProductsResponseSchema.safeParse(raw);
   if (!parsed.success) throw new Error("Contrato de API violado en /build");
 
-  return parsed.data.products.map((p) => ({ ...p, price: MOCK_PRICES[p.name] }));
+  return parsed.data.products;
 }
+
+// ─── Validation ───────────────────────────────────────────────────────────────
 
 export async function validateBuild(productIds: string[]): Promise<ValidationResult> {
   const res = await fetch(`${BACKEND}/store/pc-builder/validate`, {
@@ -91,14 +67,45 @@ export async function validateBuild(productIds: string[]): Promise<ValidationRes
     throw new Error(body.error ?? `Error ${res.status} al validar build`);
   }
 
-  const raw = await parseJson<unknown>(res);
-
-  // ── Zod: garantiza que el componente siempre recibe la forma esperada ─
+  const raw    = await parseJson<unknown>(res);
   const parsed = ValidationResultSchema.safeParse(raw);
-  if (!parsed.success) {
-    const details = JSON.stringify(parsed.error.flatten().fieldErrors, null, 2);
-    throw new Error(`Contrato de API violado en /validate:\n${details}`);
-  }
+  if (!parsed.success) throw new Error("Contrato de API violado en /validate");
 
   return parsed.data;
+}
+
+// ─── Currencies ───────────────────────────────────────────────────────────────
+
+export async function fetchCurrencies(): Promise<ExchangeRate[]> {
+  try {
+    const res = await fetch(`${BACKEND}/store/currencies`, { cache: "no-store" });
+    if (!res.ok) return [];
+    const raw    = await parseJson<unknown>(res);
+    const parsed = ExchangeRatesResponseSchema.safeParse(raw);
+    if (!parsed.success) return [];
+    return parsed.data.rates;
+  } catch {
+    return [];
+  }
+}
+
+export async function updateExchangeRate(
+  code: string,
+  rate: number,
+  adminKey = ""
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const res = await fetch(`${BACKEND}/store/currencies/${code}`, {
+      method:  "PATCH",
+      headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
+      body:    JSON.stringify({ rate_to_usd: rate }),
+    });
+    if (!res.ok) {
+      const body = await parseJson<{ error?: string }>(res);
+      return { success: false, error: body.error };
+    }
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : "Error de red" };
+  }
 }

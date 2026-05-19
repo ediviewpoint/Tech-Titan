@@ -73,4 +73,4 @@ export const selectSelectedProducts = (state: PCBuilderState) =>
   );
 
 export const selectTotalPrice = (state: PCBuilderState) =>
-  selectSelectedProducts(state).reduce((sum, p) => sum + (p.price ?? 0), 0);
+  selectSelectedProducts(state).reduce((sum, p) => sum + (p.price_usd ?? 0), 0);

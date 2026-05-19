@@ -1,79 +1,46 @@
 # ══════════════════════════════════════════════════════════════════
-# Tech-Titan — Backend MedusaJS v1 :: Production Docker Image
-# Multi-stage build: Builder → Runner
+# Tech-Titan Backend — Express puro :: Multi-stage build
 # ══════════════════════════════════════════════════════════════════
 
 # ── Stage 1: Builder ──────────────────────────────────────────────
 FROM node:20-alpine AS builder
 
-LABEL stage="builder"
-
-# Build tools needed for native Node modules (bcrypt, pg-native, etc.)
-RUN apk add --no-cache python3 make g++
-
 WORKDIR /app
 
-# Install ALL dependencies (dev + prod) for the TypeScript build
 COPY package*.json ./
-RUN npm ci --legacy-peer-deps
+RUN npm ci
 
-# Copy source
-COPY . .
+COPY tsconfig.json .
+COPY src/ ./src/
 
-# Compile TypeScript src/ → dist/
 RUN npm run build
+RUN npm prune --production
 
-# Remove dev dependencies — keeps compiled native binaries intact
-RUN npm prune --production --legacy-peer-deps
-
-# ── Stage 2: Production runner ────────────────────────────────────
+# ── Stage 2: Runner ───────────────────────────────────────────────
 FROM node:20-alpine AS runner
 
-LABEL maintainer="Tech-Titan <ops@techtitan.dev>"
-LABEL description="MedusaJS v1 Backend — PC Builder Compatibility Engine"
-
-# wget for the HEALTHCHECK command
 RUN apk add --no-cache wget
 
 WORKDIR /app
 
-# Runtime environment
 ENV NODE_ENV=production
 ENV PORT=9000
 
-# Copy production-pruned node_modules + compiled output
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist         ./dist
 COPY --from=builder /app/package.json ./package.json
 
-# Runtime config files
-COPY medusa-config.js  .
-COPY scripts/          ./scripts/
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+RUN chown -R appuser:appgroup /app
+USER appuser
 
-# Re-apply TypeORM patch on the production node_modules
-# (patch-medusa.js is idempotent — safe to run multiple times)
-RUN node scripts/patch-medusa.js
-
-# ── Security: non-root user ───────────────────────────────────────
-RUN addgroup -S medusa && adduser -S medusa -G medusa
-RUN chown -R medusa:medusa /app
-USER medusa
-
-# ── Networking ───────────────────────────────────────────────────
 EXPOSE 9000
 
-# ── Health check ─────────────────────────────────────────────────
-# start-period=90s gives MedusaJS time to run migrations on first boot
 HEALTHCHECK \
   --interval=30s  \
   --timeout=10s   \
-  --start-period=90s \
+  --start-period=20s \
   --retries=3     \
   CMD wget -qO- http://localhost:9000/health || exit 1
 
-# ── Startup sequence ─────────────────────────────────────────────
-# 1. Run pending database migrations (idempotent, safe on every boot)
-# 2. Start the production server
-CMD ["sh", "-c", \
-  "node_modules/.bin/medusa migrations run && \
-   node_modules/.bin/medusa start"]
+CMD ["node", "dist/server.js"]

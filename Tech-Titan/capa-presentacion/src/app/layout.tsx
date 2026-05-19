@@ -7,6 +7,7 @@ import { QueryProvider } from "@/providers/QueryProvider";
 import { AuthProvider } from "@/providers/AuthProvider";
 import { AuthButton } from "@/components/AuthButton";
 import { ChatWrapper } from "@/components/ChatWrapper";
+import { CurrencySelector } from "@/components/CurrencySelector";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -57,16 +58,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 </span>
               </Link>
 
-              <nav className="flex items-center gap-3">
+              <nav className="flex items-center gap-2">
                 <Link
                   href="/pc-builder"
                   className="text-xs font-medium text-gray-400 hover:text-cyan-400 transition-colors px-3 py-1.5 rounded-lg hover:bg-cyan-500/5"
                 >
                   PC Builder
                 </Link>
-                <span className="text-[10px] font-mono text-violet-400/60 border border-violet-500/20 bg-violet-500/5 rounded-full px-2.5 py-0.5 hidden sm:block">
-                  Sprint 6 · AI
-                </span>
+                <CurrencySelector />
                 <AuthButton />
               </nav>
             </div>
