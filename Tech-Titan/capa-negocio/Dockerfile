@@ -31,7 +31,7 @@ COPY --from=builder /app/dist         ./dist
 COPY --from=builder /app/package.json ./package.json
 
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
-RUN chown -R appuser:appgroup /app
+RUN mkdir -p /app/logs && chown -R appuser:appgroup /app
 USER appuser
 
 EXPOSE 9000
