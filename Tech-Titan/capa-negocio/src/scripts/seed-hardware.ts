@@ -35,13 +35,14 @@ interface ExchangeRateSeed {
 // ─── Tipos de Cambio Iniciales ────────────────────────────────────────────────
 
 const EXCHANGE_RATES: ExchangeRateSeed[] = [
-  { currency_code: "USD", currency_name: "Dólar Estadounidense", rate_to_usd: 1.0,    symbol: "$"  },
-  { currency_code: "PEN", currency_name: "Sol Peruano",          rate_to_usd: 3.75,   symbol: "S/" },
-  { currency_code: "ARS", currency_name: "Peso Argentino",       rate_to_usd: 920.0,  symbol: "$"  },
-  { currency_code: "CLP", currency_name: "Peso Chileno",         rate_to_usd: 945.0,  symbol: "$"  },
-  { currency_code: "COP", currency_name: "Peso Colombiano",      rate_to_usd: 4150.0, symbol: "$"  },
-  { currency_code: "BRL", currency_name: "Real Brasileño",       rate_to_usd: 5.15,   symbol: "R$" },
-  { currency_code: "MXN", currency_name: "Peso Mexicano",        rate_to_usd: 17.8,   symbol: "$"  },
+  { currency_code: "USD", currency_name: "Dólar Estadounidense", rate_to_usd: 1.0,    symbol: "$"   },
+  { currency_code: "PEN", currency_name: "Sol Peruano",          rate_to_usd: 3.75,   symbol: "S/"  },
+  { currency_code: "ARS", currency_name: "Peso Argentino",       rate_to_usd: 920.0,  symbol: "$"   },
+  { currency_code: "CLP", currency_name: "Peso Chileno",         rate_to_usd: 945.0,  symbol: "$"   },
+  { currency_code: "COP", currency_name: "Peso Colombiano",      rate_to_usd: 4150.0, symbol: "$"   },
+  { currency_code: "BRL", currency_name: "Real Brasileño",       rate_to_usd: 5.15,   symbol: "R$"  },
+  { currency_code: "MXN", currency_name: "Peso Mexicano",        rate_to_usd: 17.8,   symbol: "$"   },
+  { currency_code: "BOB", currency_name: "Boliviano",            rate_to_usd: 6.91,   symbol: "Bs." },
 ];
 
 // ─── Catálogo Completo ────────────────────────────────────────────────────────

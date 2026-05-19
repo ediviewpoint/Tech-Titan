@@ -11,7 +11,7 @@ import {
 import { fetchCurrencies } from "@/lib/api";
 import { CURRENCY_LABELS, type CurrencyCode } from "@/types/hardware";
 
-const CURRENCIES: CurrencyCode[] = ["USD", "PEN", "ARS", "CLP", "COP", "BRL", "MXN"];
+const CURRENCIES: CurrencyCode[] = ["USD", "PEN", "ARS", "CLP", "COP", "BRL", "MXN", "BOB"];
 
 export function CurrencySelector() {
   const [open,     setOpen]     = useState(false);

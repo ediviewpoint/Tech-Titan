@@ -13,6 +13,7 @@ const DEFAULT_RATES: Record<CurrencyCode, number> = {
   COP: 4150.0,
   BRL: 5.15,
   MXN: 17.8,
+  BOB: 6.91,
 };
 
 const DEFAULT_SYMBOLS: Record<CurrencyCode, string> = {
@@ -23,6 +24,7 @@ const DEFAULT_SYMBOLS: Record<CurrencyCode, string> = {
   COP: "$",
   BRL: "R$",
   MXN: "$",
+  BOB: "Bs.",
 };
 
 const TAX_DEFAULT = 18; // IGV Perú

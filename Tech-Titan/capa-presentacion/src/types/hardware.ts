@@ -84,7 +84,7 @@ export interface ValidationResult {
 }
 
 // ─── Currency ─────────────────────────────────────────────────────────────────
-export type CurrencyCode = "USD" | "PEN" | "ARS" | "CLP" | "COP" | "BRL" | "MXN";
+export type CurrencyCode = "USD" | "PEN" | "ARS" | "CLP" | "COP" | "BRL" | "MXN" | "BOB";
 
 export interface ExchangeRate {
   currency_code: CurrencyCode;
@@ -102,4 +102,5 @@ export const CURRENCY_LABELS: Record<CurrencyCode, string> = {
   COP: "COP — Peso Col.",
   BRL: "BRL — Real",
   MXN: "MXN — Peso Mex.",
+  BOB: "BOB — Boliviano",
 };
